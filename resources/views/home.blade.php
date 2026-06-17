@@ -1,4 +1,4 @@
-@extends('layouts.app', ['title' => 'CPHL ICT SupportLink'])
+@extends('layouts.app', ['title' => 'CPHL ICT Support Portal'])
 
 @section('content')
     <section class="hero-panel p-4 p-lg-5 mb-4">
