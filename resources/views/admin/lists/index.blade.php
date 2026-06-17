@@ -7,7 +7,7 @@
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                     <h1 class="h4 mb-0">{{ $title }}</h1>
                     @if ($listKey === 'facilities')
-                        <form method="POST" action="{{ route('lists.facilities.sync') }}">
+                        <form method="POST" action="{{ \Illuminate\Support\Facades\Route::has('lists.facilities.sync') ? route('lists.facilities.sync') : url('/lists/facilities/sync') }}">
                             @csrf
                             <button class="btn btn-outline-dark rounded-pill">Sync From IRRDS</button>
                         </form>
