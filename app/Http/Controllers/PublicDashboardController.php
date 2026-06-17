@@ -62,7 +62,9 @@ class PublicDashboardController extends Controller
         $resolvedCodes = ['resolved', 'closed'];
         $averageResolutionQuery = match (DB::getDriverName()) {
             'sqlite' => 'AVG((julianday(resolved_at) - julianday(created_at)) * 24)',
-            default => 'AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600)',
+            'mysql' => 'AVG(TIMESTAMPDIFF(SECOND, created_at, resolved_at) / 3600)',
+            'pgsql' => 'AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600)',
+            default => 'AVG(TIMESTAMPDIFF(SECOND, created_at, resolved_at) / 3600)',
         };
 
         return [
