@@ -1,59 +1,305 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# CPHL ICT SupportLink (CIS)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+CPHL ICT SupportLink (CIS) is a centralized ICT support and ticket management platform for CPHL-supported digital systems. It provides a public issue reporting portal, ticket tracking, transparency dashboards, and an internal ICT operations dashboard for assignment, follow-up, reporting, and accountability.
 
-## About Laravel
+## Core Purpose
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+CIS is designed to:
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- let users report ICT issues without creating accounts
+- generate unique support ticket numbers in the format `CIS-YYMMDD-XXX`
+- allow public ticket tracking using ticket number plus email or phone
+- give ICT teams an authenticated dashboard for assignment and status updates
+- support public-facing transparency and performance dashboards
+- provide configurable manager lists instead of hardcoded dropdown values
+- support future integration from other CPHL systems through web links and API endpoints
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Current Modules
 
-## Learning Laravel
+The current codebase includes:
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+- public ticket submission at `/report`
+- public ticket tracking at `/track`
+- public dashboard at `/dashboard/public`
+- staff login and internal ICT dashboard at `/dashboard`
+- ticket management pages for viewing and updating tickets
+- manager list screens for systems, modules, regions, facilities, departments, issue types, priorities, statuses, resolution categories, and closure reasons
+- email mailable classes for new ticket alerts, user confirmations, assignment updates, and status updates
+- audit logging and ticket status history tables
+- API endpoints for system/module lookups and ticket creation
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Technology Stack
 
-## Laravel Sponsors
+- Laravel 12
+- PHP 8.2+
+- Blade views
+- Bootstrap 5 UI
+- SQLite by default for local setup
+- PostgreSQL preferred for production
+- SMTP-compatible mail configuration
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Project Structure
 
-### Premium Partners
+- [routes/web.php](/var/www/html/cisPortal/routes/web.php): browser routes
+- [routes/api.php](/var/www/html/cisPortal/routes/api.php): integration-ready API routes
+- [app/Http/Controllers](/var/www/html/cisPortal/app/Http/Controllers): public, admin, auth, and API controllers
+- [app/Models](/var/www/html/cisPortal/app/Models): ticket, list, user, and audit models
+- [database/migrations](/var/www/html/cisPortal/database/migrations): schema definition
+- [database/seeders/DatabaseSeeder.php](/var/www/html/cisPortal/database/seeders/DatabaseSeeder.php): starter data and default staff users
+- [resources/views](/var/www/html/cisPortal/resources/views): Bootstrap Blade templates
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## Default Seeded Users
 
-## Contributing
+After seeding, these users are available:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+- `admin@cphl.go.ug` / `password123`
+- `supervisor@cphl.go.ug` / `password123`
+- `support@cphl.go.ug` / `password123`
 
-## Code of Conduct
+Change these passwords immediately on any shared or production server.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Local Setup
 
-## Security Vulnerabilities
+1. Install system dependencies:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+sudo apt update
+sudo apt install -y php php-cli php-common php-mbstring php-xml php-sqlite3 php-curl php-zip unzip composer nodejs npm
+```
 
-## License
+2. Clone or copy the project to the target folder:
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```bash
+git clone <your-repository-url> cisPortal
+cd cisPortal
+```
+
+3. Install PHP dependencies:
+
+```bash
+composer install
+```
+
+4. Install frontend dependencies:
+
+```bash
+npm install
+```
+
+5. Prepare the environment file:
+
+```bash
+cp .env.example .env
+```
+
+6. Generate an application key if needed:
+
+```bash
+php artisan key:generate
+```
+
+7. Create the database file for local SQLite use:
+
+```bash
+touch database/database.sqlite
+```
+
+8. Update `.env` with the correct local settings:
+
+```env
+APP_NAME="CPHL ICT SupportLink"
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://localhost
+
+DB_CONNECTION=sqlite
+DB_DATABASE=/full/path/to/cisPortal/database/database.sqlite
+
+MAIL_MAILER=log
+MAIL_FROM_ADDRESS=ictsupport@cphl.go.ug
+MAIL_FROM_NAME="CPHL ICT SupportLink"
+```
+
+9. Run migrations and seed starter data:
+
+```bash
+php artisan migrate --seed
+```
+
+10. Build frontend assets:
+
+```bash
+npm run build
+```
+
+11. Start the app locally:
+
+```bash
+php artisan serve
+```
+
+## Deploying On Another Server
+
+These steps assume an Ubuntu server with Apache or Nginx.
+
+### 1. Install server packages
+
+```bash
+sudo apt update
+sudo apt install -y php php-fpm php-cli php-common php-mbstring php-xml php-pgsql php-sqlite3 php-curl php-zip unzip composer nodejs npm git
+```
+
+Use `php-pgsql` for PostgreSQL in production. Keep `php-sqlite3` only if you plan to use SQLite.
+
+### 2. Copy the application
+
+```bash
+cd /var/www/html
+git clone <your-repository-url> cisPortal
+cd cisPortal
+```
+
+### 3. Install dependencies
+
+```bash
+composer install --no-dev --optimize-autoloader
+npm install
+npm run build
+```
+
+### 4. Configure environment
+
+```bash
+cp .env.example .env
+php artisan key:generate
+```
+
+Then set production values in `.env`. Example:
+
+```env
+APP_NAME="CPHL ICT SupportLink"
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://support.cphl.go.ug
+
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=cis_portal
+DB_USERNAME=cis_user
+DB_PASSWORD=change_this
+
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.example.com
+MAIL_PORT=587
+MAIL_USERNAME=your_smtp_user
+MAIL_PASSWORD=your_smtp_password
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS=ictsupport@cphl.go.ug
+MAIL_FROM_NAME="CPHL ICT SupportLink"
+
+FILESYSTEM_DISK=local
+```
+
+### 5. Prepare the database
+
+Create the production database and database user, then run:
+
+```bash
+php artisan migrate --seed --force
+```
+
+### 6. Set permissions
+
+Make sure the web server can write to `storage` and `bootstrap/cache`:
+
+```bash
+sudo chown -R www-data:www-data storage bootstrap/cache
+sudo chmod -R 775 storage bootstrap/cache
+```
+
+### 7. Optimize Laravel for production
+
+```bash
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+```
+
+### 8. Configure the web server
+
+Point the site root to:
+
+```text
+/var/www/html/cisPortal/public
+```
+
+If using Apache, ensure `mod_rewrite` is enabled.
+
+If using Nginx, use a Laravel-compatible config that routes requests through `public/index.php`.
+
+### 9. Background processing
+
+If you enable queued mail or jobs later, run a queue worker using Supervisor or systemd:
+
+```bash
+php artisan queue:work
+```
+
+### 10. Final checks
+
+After deployment, verify:
+
+- home page loads
+- `/report` submits tickets successfully
+- `/track` finds seeded or submitted tickets
+- login works for ICT staff
+- email settings send correctly
+- manager lists are editable
+- `storage/logs/laravel.log` is clean
+
+## Integration Pattern
+
+External CPHL systems can link users into CIS using URLs like:
+
+```text
+https://support.cphl.go.ug/report?system=RDS&module=Results
+```
+
+or:
+
+```text
+https://support.cphl.go.ug/report?system_name=RDS&module_name=Results
+```
+
+The public form will preselect the system and module when matching records exist.
+
+## API Endpoints
+
+Current API routes:
+
+- `GET /api/systems`
+- `GET /api/systems/{system}/modules`
+- `POST /api/tickets`
+
+These are intended as the foundation for future integrations with other CPHL-supported applications.
+
+## Important Notes
+
+- manager lists should be inactivated rather than deleted when values are already in use
+- production should use strong passwords and a proper SMTP configuration
+- PostgreSQL is recommended for production even though SQLite is convenient for local setup
+- the seeded credentials are only for initial setup and testing
+
+## Suggested First Commands After Cloning
+
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+touch database/database.sqlite
+php artisan migrate --seed
+npm install
+npm run build
+php artisan serve
+```
