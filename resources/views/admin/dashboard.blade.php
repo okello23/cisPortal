@@ -56,6 +56,12 @@
         </div>
         <div class="col-lg-4">
             <div class="content-card bg-white p-4">
+                @if (auth()->user()->role === 'ict_admin')
+                    <div class="mb-4">
+                        <h2 class="h5">Administration</h2>
+                        <a href="{{ route('admin.users.index') }}" class="btn btn-outline-dark rounded-4 w-100 text-start">Manage ICT Users</a>
+                    </div>
+                @endif
                 <h2 class="h5">Manager Lists</h2>
                 <div class="d-grid gap-2">
                     @foreach ([

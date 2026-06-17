@@ -7,9 +7,31 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Facility extends Model
 {
-    protected $fillable = ['region_id', 'name', 'code', 'description', 'active', 'sort_order', 'created_by', 'updated_by'];
+    protected $fillable = [
+        'region_id',
+        'name',
+        'code',
+        'source_system',
+        'external_id',
+        'facility_type',
+        'moh_id',
+        'nhlds_uuid',
+        'district_name',
+        'subcounty_name',
+        'phone',
+        'email',
+        'source_payload',
+        'description',
+        'active',
+        'sort_order',
+        'created_by',
+        'updated_by',
+    ];
 
-    protected $casts = ['active' => 'boolean'];
+    protected $casts = [
+        'active' => 'boolean',
+        'source_payload' => 'array',
+    ];
 
     public function region(): BelongsTo
     {

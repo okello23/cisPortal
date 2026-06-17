@@ -13,6 +13,7 @@ use App\Models\SupportModule;
 use App\Models\SupportSystem;
 use App\Models\TicketStatus;
 use App\Support\AuditService;
+use App\Support\FacilitySyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,7 +21,10 @@ use Illuminate\View\View;
 
 class ManagerListController extends Controller
 {
-    public function __construct(private readonly AuditService $auditService)
+    public function __construct(
+        private readonly AuditService $auditService,
+        private readonly FacilitySyncService $facilitySyncService,
+    )
     {
     }
 
@@ -28,15 +32,31 @@ class ManagerListController extends Controller
     {
         $this->authorizeUser();
         [$modelClass, $fields, $title] = $this->resolveList($list);
+        $recordsQuery = $modelClass::query()->orderBy('sort_order')->orderBy('name');
+
+        if ($list === 'facilities') {
+            $recordsQuery->with('region');
+        }
 
         return view('admin.lists.index', [
             'listKey' => $list,
             'title' => $title,
-            'records' => $modelClass::query()->orderBy('sort_order')->orderBy('name')->get(),
+            'records' => $recordsQuery->get(),
             'fields' => $fields,
             'systems' => SupportSystem::query()->where('active', true)->orderBy('name')->get(),
             'regions' => Region::query()->where('active', true)->orderBy('name')->get(),
         ]);
+    }
+
+    public function syncFacilities(Request $request): RedirectResponse
+    {
+        $this->authorizeUser();
+
+        $result = $this->facilitySyncService->syncFromIrrds();
+
+        $this->auditService->log('facilities.synced', $request->user(), null, $result, Auth::id(), $request);
+
+        return back()->with('status', "Facilities synced from IRRDS. Created {$result['created']}, updated {$result['updated']}.");
     }
 
     public function store(Request $request, string $list): RedirectResponse
