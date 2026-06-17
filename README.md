@@ -1,6 +1,6 @@
-# CPHL ICT SupportLink (CIS)
+# CPHL ICT Support Portal (CIS)
 
-CPHL ICT SupportLink (CIS) is a centralized ICT support and ticket management platform for CPHL-supported digital systems. It provides a public issue reporting portal, ticket tracking, transparency dashboards, and an internal ICT operations dashboard for assignment, follow-up, reporting, and accountability.
+CPHL ICT Support Portal (CIS) is a centralized ICT support and ticket management platform for CPHL-supported digital systems. It provides a public issue reporting portal, ticket tracking, transparency dashboards, and an internal ICT operations dashboard for assignment, follow-up, reporting, and accountability.
 
 ## Core Purpose
 
@@ -34,8 +34,7 @@ The current codebase includes:
 - PHP 8.2+
 - Blade views
 - Bootstrap 5 UI
-- SQLite by default for local setup
-- PostgreSQL preferred for production
+- MySQL
 - SMTP-compatible mail configuration
 
 ## Project Structure
@@ -64,7 +63,7 @@ Change these passwords immediately on any shared or production server.
 
 ```bash
 sudo apt update
-sudo apt install -y php php-cli php-common php-mbstring php-xml php-sqlite3 php-curl php-zip unzip composer nodejs npm
+sudo apt install -y php php-cli php-common php-mbstring php-xml php-mysql php-curl php-zip unzip composer nodejs npm
 ```
 
 2. Clone or copy the project to the target folder:
@@ -98,26 +97,39 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-7. Create the database file for local SQLite use:
+7. Create the MySQL database and user:
 
 ```bash
-touch database/database.sqlite
+mysql -u root -p
+```
+
+Then run:
+
+```sql
+CREATE DATABASE cis_portal CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'cis_user'@'localhost' IDENTIFIED BY 'change_this';
+GRANT ALL PRIVILEGES ON cis_portal.* TO 'cis_user'@'localhost';
+FLUSH PRIVILEGES;
 ```
 
 8. Update `.env` with the correct local settings:
 
 ```env
-APP_NAME="CPHL ICT SupportLink"
+APP_NAME="CPHL ICT Support Portal"
 APP_ENV=local
 APP_DEBUG=true
 APP_URL=http://localhost
 
-DB_CONNECTION=sqlite
-DB_DATABASE=/full/path/to/cisPortal/database/database.sqlite
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=cis_portal
+DB_USERNAME=cis_user
+DB_PASSWORD=change_this
 
 MAIL_MAILER=log
 MAIL_FROM_ADDRESS=ictsupport@cphl.go.ug
-MAIL_FROM_NAME="CPHL ICT SupportLink"
+MAIL_FROM_NAME="CPHL ICT Support Portal"
 ```
 
 9. Run migrations and seed starter data:
@@ -146,10 +158,8 @@ These steps assume an Ubuntu server with Apache or Nginx.
 
 ```bash
 sudo apt update
-sudo apt install -y php php-fpm php-cli php-common php-mbstring php-xml php-pgsql php-sqlite3 php-curl php-zip unzip composer nodejs npm git
+sudo apt install -y php php-fpm php-cli php-common php-mbstring php-xml php-mysql php-curl php-zip unzip composer nodejs npm git
 ```
-
-Use `php-pgsql` for PostgreSQL in production. Keep `php-sqlite3` only if you plan to use SQLite.
 
 ### 2. Copy the application
 
@@ -177,14 +187,14 @@ php artisan key:generate
 Then set production values in `.env`. Example:
 
 ```env
-APP_NAME="CPHL ICT SupportLink"
+APP_NAME="CPHL ICT Support Portal"
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://support.cphl.go.ug
 
-DB_CONNECTION=pgsql
+DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
-DB_PORT=5432
+DB_PORT=3306
 DB_DATABASE=cis_portal
 DB_USERNAME=cis_user
 DB_PASSWORD=change_this
@@ -196,7 +206,7 @@ MAIL_USERNAME=your_smtp_user
 MAIL_PASSWORD=your_smtp_password
 MAIL_ENCRYPTION=tls
 MAIL_FROM_ADDRESS=ictsupport@cphl.go.ug
-MAIL_FROM_NAME="CPHL ICT SupportLink"
+MAIL_FROM_NAME="CPHL ICT Support Portal"
 
 FILESYSTEM_DISK=local
 ```
@@ -288,7 +298,7 @@ These are intended as the foundation for future integrations with other CPHL-sup
 
 - manager lists should be inactivated rather than deleted when values are already in use
 - production should use strong passwords and a proper SMTP configuration
-- PostgreSQL is recommended for production even though SQLite is convenient for local setup
+- MySQL is the expected database for both local and server deployments in this project
 - the seeded credentials are only for initial setup and testing
 
 ## Suggested First Commands After Cloning
@@ -297,7 +307,6 @@ These are intended as the foundation for future integrations with other CPHL-sup
 composer install
 cp .env.example .env
 php artisan key:generate
-touch database/database.sqlite
 php artisan migrate --seed
 npm install
 npm run build
