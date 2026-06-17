@@ -59,7 +59,7 @@
                 @if (auth()->user()->role === 'ict_admin')
                     <div class="mb-4">
                         <h2 class="h5">Administration</h2>
-                        <a href="{{ route('admin.users.index') }}" class="btn btn-outline-dark rounded-4 w-100 text-start">Manage ICT Users</a>
+                        <a href="{{ \Illuminate\Support\Facades\Route::has('admin.users.index') ? route('admin.users.index') : url('/users') }}" class="btn btn-outline-dark rounded-4 w-100 text-start">Manage ICT Users</a>
                     </div>
                 @endif
                 <h2 class="h5">Manager Lists</h2>
