@@ -18,7 +18,7 @@
                         <h2 class="h5">System Information</h2>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">System Name</label>
+                        <label class="form-label">System Name <span class="text-danger">*</span></label>
                         <select name="system_id" class="form-select" required id="system-select">
                             <option value="">Select system</option>
                             @foreach ($systems as $system)
@@ -40,16 +40,16 @@
                         <h2 class="h5">User Information</h2>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Full Name</label>
+                        <label class="form-label">Full Name (Reported By) <span class="text-danger">*</span></label>
                         <input type="text" name="full_name" class="form-control" value="{{ old('full_name') }}" required>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Phone Number</label>
-                        <input type="text" name="phone" class="form-control" value="{{ old('phone') }}">
+                        <label class="form-label">Phone Number <span class="text-danger">*</span></label>
+                        <input type="text" name="phone" class="form-control" value="{{ old('phone') }}" required>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Email Address</label>
-                        <input type="email" name="email" class="form-control" value="{{ old('email') }}">
+                        <label class="form-label">Email Address <span class="text-danger">*</span></label>
+                        <input type="email" name="email" class="form-control" value="{{ old('email') }}" required>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Region</label>
@@ -96,7 +96,7 @@
                         <h2 class="h5">Ticket Information</h2>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Issue Type</label>
+                        <label class="form-label">Issue Type <span class="text-danger">*</span></label>
                         <select name="issue_type_id" class="form-select" required>
                             <option value="">Select issue type</option>
                             @foreach ($issueTypes as $issueType)
@@ -114,7 +114,7 @@
                         </select>
                     </div>
                     <div class="col-12">
-                        <label class="form-label">Issue Description</label>
+                        <label class="form-label">Issue Description <span class="text-danger">*</span></label>
                         <textarea name="description" rows="5" class="form-control" required>{{ old('description') }}</textarea>
                     </div>
                     <div class="col-md-6">
