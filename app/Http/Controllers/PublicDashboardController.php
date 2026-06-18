@@ -14,7 +14,11 @@ class PublicDashboardController extends Controller
 {
     public function home(): View
     {
-        return view('home', ['stats' => $this->homeStats()]);
+        return view('home', [
+            'stats' => $this->homeStats(),
+            'todayStats' => $this->dailyStats(),
+            'overviewStats' => $this->filteredStats(Ticket::query()),
+        ]);
     }
 
     public function index(Request $request): View
