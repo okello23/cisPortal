@@ -53,7 +53,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Region</label>
-                        <select name="region_id" class="form-select">
+                        <select name="region_id" class="form-select" id="region-select">
                             <option value="">Select region</option>
                             @foreach ($regions as $region)
                                 <option value="{{ $region->id }}" @selected(old('region_id') == $region->id)>{{ $region->name }}</option>
@@ -61,11 +61,24 @@
                         </select>
                     </div>
                     <div class="col-md-6">
+                        <label class="form-label">District</label>
+                        <select name="district_name" class="form-select" id="district-select">
+                            <option value="">Select district</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
                         <label class="form-label">Facility</label>
-                        <select name="facility_id" class="form-select">
+                        <select name="facility_id" class="form-select" id="facility-select">
                             <option value="">Select facility</option>
                             @foreach ($facilities as $facility)
-                                <option value="{{ $facility->id }}" @selected(old('facility_id') == $facility->id)>{{ $facility->name }}</option>
+                                <option
+                                    value="{{ $facility->id }}"
+                                    data-region-id="{{ $facility->region_id }}"
+                                    data-district-name="{{ $facility->district_name }}"
+                                    @selected(old('facility_id') == $facility->id)
+                                >
+                                    {{ $facility->name }}
+                                </option>
                             @endforeach
                         </select>
                     </div>
@@ -127,6 +140,11 @@
         const systemSelect = document.getElementById('system-select');
         const moduleSelect = document.getElementById('module-select');
         const moduleOptions = Array.from(moduleSelect.querySelectorAll('option[data-system-id]'));
+        const regionSelect = document.getElementById('region-select');
+        const districtSelect = document.getElementById('district-select');
+        const facilitySelect = document.getElementById('facility-select');
+        const facilityOptions = Array.from(facilitySelect.querySelectorAll('option[data-region-id]'));
+        const selectedDistrict = @json(old('district_name'));
 
         function syncModules() {
             const systemId = systemSelect.value;
@@ -138,7 +156,76 @@
             }
         }
 
+        function buildDistrictOptions() {
+            const regionId = regionSelect.value;
+            if (!regionId) {
+                districtSelect.innerHTML = '<option value="">Select district</option>';
+                districtSelect.disabled = true;
+                return;
+            }
+
+            const districtNames = [...new Set(
+                facilityOptions
+                    .filter(option => option.dataset.regionId === regionId)
+                    .map(option => option.dataset.districtName)
+                    .filter(Boolean)
+            )].sort((a, b) => a.localeCompare(b));
+
+            const currentDistrict = districtSelect.value || selectedDistrict;
+            districtSelect.innerHTML = '<option value="">Select district</option>';
+
+            districtNames.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                if (name === currentDistrict) {
+                    option.selected = true;
+                }
+                districtSelect.appendChild(option);
+            });
+
+            districtSelect.disabled = districtNames.length === 0;
+        }
+
+        function syncFacilities() {
+            const regionId = regionSelect.value;
+            const districtName = districtSelect.value;
+
+            if (!regionId) {
+                facilityOptions.forEach(option => {
+                    option.hidden = true;
+                });
+                facilitySelect.value = '';
+                facilitySelect.disabled = true;
+                return;
+            }
+
+            facilityOptions.forEach(option => {
+                const matchesRegion = option.dataset.regionId === regionId;
+                const matchesDistrict = !districtName || option.dataset.districtName === districtName;
+                option.hidden = !(matchesRegion && matchesDistrict);
+            });
+
+            if (facilitySelect.selectedOptions[0]?.hidden) {
+                facilitySelect.value = '';
+            }
+
+            facilitySelect.disabled = facilityOptions.filter(option => !option.hidden).length === 0;
+        }
+
+        function syncLocationCascade() {
+            buildDistrictOptions();
+            syncFacilities();
+        }
+
         systemSelect.addEventListener('change', syncModules);
+        regionSelect.addEventListener('change', () => {
+            districtSelect.value = '';
+            syncLocationCascade();
+        });
+        districtSelect.addEventListener('change', syncFacilities);
+
         syncModules();
+        syncLocationCascade();
     </script>
 @endpush
