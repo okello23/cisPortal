@@ -41,7 +41,9 @@ class ManagerListController extends Controller
         return view('admin.lists.index', [
             'listKey' => $list,
             'title' => $title,
-            'records' => $recordsQuery->get(),
+            'records' => $list === 'facilities'
+                ? $recordsQuery->paginate(10)->withQueryString()
+                : $recordsQuery->get(),
             'fields' => $fields,
             'systems' => SupportSystem::query()->where('active', true)->orderBy('name')->get(),
             'regions' => Region::query()->where('active', true)->orderBy('name')->get(),
