@@ -20,12 +20,27 @@ class FacilitySyncService
             'includeInactive' => 'false',
         ])->throw();
 
+        $payload = $response->json();
+        $items = Arr::get($payload, 'data', $payload);
         $created = 0;
         $updated = 0;
+        $skipped = 0;
 
-        foreach ($response->json() as $item) {
+        foreach ($items as $item) {
+            $item = $this->normalizeFacilityItem($item);
+
+            if (! is_array($item)) {
+                $skipped++;
+                continue;
+            }
+
             $region = $this->resolveRegion($item);
             $attributes = $this->mapFacilityAttributes($item, $region?->id);
+
+            if (blank($attributes['name']) || blank($attributes['code']) || blank($attributes['external_id'])) {
+                $skipped++;
+                continue;
+            }
 
             $facility = Facility::query()
                 ->where('source_system', 'irrds')
@@ -51,7 +66,20 @@ class FacilitySyncService
             }
         }
 
-        return ['created' => $created, 'updated' => $updated, 'fetched' => count($response->json())];
+        return ['created' => $created, 'updated' => $updated, 'skipped' => $skipped, 'fetched' => is_countable($items) ? count($items) : 0];
+    }
+
+    private function normalizeFacilityItem(mixed $item): ?array
+    {
+        if (! is_array($item)) {
+            return null;
+        }
+
+        if (array_is_list($item) && count($item) === 1 && is_array($item[0] ?? null)) {
+            return $item[0];
+        }
+
+        return $item;
     }
 
     private function resolveRegion(array $item): ?Region

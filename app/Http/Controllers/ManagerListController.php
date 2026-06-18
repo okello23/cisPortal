@@ -56,7 +56,7 @@ class ManagerListController extends Controller
 
         $this->auditService->log('facilities.synced', $request->user(), null, $result, Auth::id(), $request);
 
-        return back()->with('status', "Facilities synced from IRRDS. Created {$result['created']}, updated {$result['updated']}.");
+        return back()->with('status', "Facilities synced from IRRDS. Created {$result['created']}, updated {$result['updated']}, skipped {$result['skipped']}.");
     }
 
     public function store(Request $request, string $list): RedirectResponse
