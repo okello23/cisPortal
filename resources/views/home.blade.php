@@ -1,7 +1,42 @@
 @extends('layouts.app', ['title' => 'CPHL ICT Support Portal'])
 
 @section('content')
-    <section class="hero-panel p-4 p-lg-5 mb-4">
+    <style>
+        .home-hero {
+            position: relative;
+            overflow: hidden;
+            isolation: isolate;
+        }
+
+        .home-hero::before {
+            content: "";
+            position: absolute;
+            inset: -2rem;
+            background:
+                linear-gradient(135deg, rgba(10, 35, 57, 0.82), rgba(8, 77, 88, 0.62)),
+                url('/unhls33.jpg') center center / cover no-repeat;
+            filter: blur(12px) saturate(0.95);
+            transform: scale(1.08);
+            z-index: -2;
+        }
+
+        .home-hero::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at top left, rgba(255, 255, 255, 0.14), transparent 28%),
+                linear-gradient(180deg, rgba(8, 20, 33, 0.16), rgba(8, 20, 33, 0.46));
+            z-index: -1;
+        }
+
+        .home-hero .metric-card {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.88);
+        }
+    </style>
+
+    <section class="hero-panel home-hero p-4 p-lg-5 mb-4">
         <div class="row g-4 align-items-center">
             <div class="col-lg-7">
                 <p class="text-uppercase fw-semibold small mb-2">Centralized ICT support for every CPHL system</p>
