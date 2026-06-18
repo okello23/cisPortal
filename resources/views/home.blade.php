@@ -6,17 +6,18 @@
             position: relative;
             overflow: hidden;
             isolation: isolate;
+            min-height: 28rem;
+            display: flex;
+            align-items: center;
         }
 
         .home-hero::before {
             content: "";
             position: absolute;
-            inset: -2rem;
-            background:
-                linear-gradient(135deg, rgba(10, 35, 57, 0.82), rgba(8, 77, 88, 0.62)),
-                url('/unhls33.jpg') center center / cover no-repeat;
-            filter: blur(12px) saturate(0.95);
-            transform: scale(1.08);
+            inset: 0;
+            background: url('/unhls33.jpg') center 38% / cover no-repeat;
+            filter: blur(5px) saturate(0.92) brightness(0.74);
+            transform: scale(1.05);
             z-index: -2;
         }
 
@@ -25,14 +26,46 @@
             position: absolute;
             inset: 0;
             background:
-                radial-gradient(circle at top left, rgba(255, 255, 255, 0.14), transparent 28%),
-                linear-gradient(180deg, rgba(8, 20, 33, 0.16), rgba(8, 20, 33, 0.46));
+                linear-gradient(90deg, rgba(10, 28, 43, 0.82) 0%, rgba(10, 28, 43, 0.58) 44%, rgba(10, 28, 43, 0.36) 100%),
+                radial-gradient(circle at top right, rgba(255, 255, 255, 0.18), transparent 24%);
             z-index: -1;
         }
 
         .home-hero .metric-card {
             backdrop-filter: blur(10px);
-            background: rgba(255, 255, 255, 0.88);
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .home-hero .lead,
+        .home-hero p,
+        .home-hero h1 {
+            max-width: 12ch;
+        }
+
+        .home-hero .lead {
+            max-width: 32rem;
+        }
+
+        @media (max-width: 991.98px) {
+            .home-hero {
+                min-height: auto;
+            }
+
+            .home-hero::before {
+                background-position: center center;
+            }
+
+            .home-hero::after {
+                background:
+                    linear-gradient(180deg, rgba(10, 28, 43, 0.78) 0%, rgba(10, 28, 43, 0.58) 100%),
+                    radial-gradient(circle at top right, rgba(255, 255, 255, 0.16), transparent 24%);
+            }
+
+            .home-hero .lead,
+            .home-hero p,
+            .home-hero h1 {
+                max-width: none;
+            }
         }
     </style>
 
@@ -82,7 +115,7 @@
         <div class="col-lg-4">
             <div class="content-card bg-white p-4 h-100">
                 <h2 class="h4">Public Ticket Submission</h2>
-                <p class="text-muted">Users can report ICT issues without creating accounts. Source system and module can be prefilled from integrated CPHL applications.</p>
+                <p class="text-muted">Users can report ICT issues without creating accounts, with the affected system and location captured in one guided form.</p>
             </div>
         </div>
         <div class="col-lg-4">
