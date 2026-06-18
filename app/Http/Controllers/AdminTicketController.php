@@ -241,7 +241,7 @@ class AdminTicketController extends Controller
                 $query->whereIn('role', $roles);
 
                 if ($ticket->assigned_to) {
-                    $query->orWhereKey($ticket->assigned_to);
+                    $query->orWhere('id', $ticket->assigned_to);
                 }
             })
             ->orderBy('name')
