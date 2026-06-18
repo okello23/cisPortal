@@ -6,7 +6,7 @@
             <div class="content-card bg-white p-4 p-lg-5">
                 <p class="text-uppercase text-muted fw-semibold small mb-2">Internal ICT Access</p>
                 <h1 class="h3 mb-4">Staff login</h1>
-                <form method="POST" action="{{ route('login.store') }}" class="row g-3">
+                <form method="POST" action="{{ route('login.store', [], false) }}" class="row g-3">
                     @csrf
                     <div class="col-12">
                         <label class="form-label">Email Address</label>

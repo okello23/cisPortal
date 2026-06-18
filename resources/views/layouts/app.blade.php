@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $title ?? 'CPHL ICT Support Portal' }}</title>
-    <link rel="icon" type="image/png" href="{{ asset('coa2.png') }}">
-    <link rel="apple-touch-icon" href="{{ asset('coa2.png') }}">
+    <link rel="icon" type="image/png" href="/coa2.png">
+    <link rel="apple-touch-icon" href="/coa2.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -60,15 +60,15 @@
 <body>
     <nav class="navbar navbar-expand-lg py-3">
         <div class="container">
-            <a class="navbar-brand fw-bold text-uppercase" href="{{ route('home') }}">CPHL ICT Support Portal</a>
+            <a class="navbar-brand fw-bold text-uppercase" href="{{ route('home', [], false) }}">CPHL ICT Support Portal</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="mainNav">
                 <div class="ms-auto d-flex gap-2 align-items-center">
-                    <a class="btn btn-outline-dark rounded-pill px-4" href="{{ route('tickets.create') }}">Report Issue</a>
-                    <a class="btn btn-outline-dark rounded-pill px-4" href="{{ route('tickets.track') }}">Track Ticket</a>
-                    <a class="btn btn-dark rounded-pill px-4" href="{{ auth()->check() ? route('dashboard') : route('login') }}">
+                    <a class="btn btn-outline-dark rounded-pill px-4" href="{{ route('tickets.create', [], false) }}">Report Issue</a>
+                    <a class="btn btn-outline-dark rounded-pill px-4" href="{{ route('tickets.track', [], false) }}">Track Ticket</a>
+                    <a class="btn btn-dark rounded-pill px-4" href="{{ auth()->check() ? route('dashboard', [], false) : route('login', [], false) }}">
                         {{ auth()->check() ? 'ICT Dashboard' : 'Staff Login' }}
                     </a>
                 </div>
