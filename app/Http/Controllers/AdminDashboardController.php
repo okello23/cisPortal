@@ -14,7 +14,7 @@ class AdminDashboardController extends Controller
         $user = Auth::user();
         $query = Ticket::query()->with(['status', 'assignedStaff', 'system']);
 
-        if ($user->role === 'ict_support_staff') {
+        if (! $user->hasAnyRole(['ict_admin', 'ict_manager', 'ict_supervisor'])) {
             $query->where('assigned_to', $user->id);
         }
 

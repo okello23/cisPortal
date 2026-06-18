@@ -101,10 +101,6 @@ class UserManagementController extends Controller
 
     private function roles(): array
     {
-        return [
-            'ict_admin' => 'ICT Admin',
-            'ict_supervisor' => 'ICT Supervisor',
-            'ict_support_staff' => 'ICT Support Staff',
-        ];
+        return User::roleLabels();
     }
 }

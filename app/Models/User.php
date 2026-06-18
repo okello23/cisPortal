@@ -15,6 +15,12 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    public const ROLE_ICT_ADMIN = 'ict_admin';
+    public const ROLE_ICT_MANAGER = 'ict_manager';
+    public const ROLE_ICT_SUPERVISOR = 'ict_supervisor';
+    public const ROLE_ICT_SUPPORT_STAFF = 'ict_support_staff';
+    public const ROLE_DEVELOPER = 'developer';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -61,5 +67,16 @@ class User extends Authenticatable
     public function hasAnyRole(array $roles): bool
     {
         return in_array($this->role, $roles, true);
+    }
+
+    public static function roleLabels(): array
+    {
+        return [
+            self::ROLE_ICT_ADMIN => 'ICT Admin',
+            self::ROLE_ICT_MANAGER => 'ICT Manager',
+            self::ROLE_ICT_SUPERVISOR => 'Software Development Supervisor',
+            self::ROLE_ICT_SUPPORT_STAFF => 'ICT Support Staff',
+            self::ROLE_DEVELOPER => 'Developer',
+        ];
     }
 }

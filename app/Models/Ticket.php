@@ -28,6 +28,9 @@ class Ticket extends Model
         'ip_address',
         'status_id',
         'assigned_to',
+        'assigned_at',
+        'last_worked_at',
+        'last_reminder_sent_at',
         'resolution_category_id',
         'closure_reason_id',
         'expected_resolution_date',
@@ -40,6 +43,9 @@ class Ticket extends Model
     protected $casts = [
         'training_recommended' => 'boolean',
         'expected_resolution_date' => 'date',
+        'assigned_at' => 'datetime',
+        'last_worked_at' => 'datetime',
+        'last_reminder_sent_at' => 'datetime',
         'resolved_at' => 'datetime',
         'closed_at' => 'datetime',
     ];

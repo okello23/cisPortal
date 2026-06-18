@@ -89,6 +89,7 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Assigned', 'code' => 'assigned', 'color' => 'primary'],
             ['name' => 'In Progress', 'code' => 'in_progress', 'color' => 'info'],
             ['name' => 'Pending User', 'code' => 'pending_user', 'color' => 'warning'],
+            ['name' => 'Escalated', 'code' => 'escalated', 'color' => 'warning'],
             ['name' => 'Resolved', 'code' => 'resolved', 'color' => 'success'],
             ['name' => 'Closed', 'code' => 'closed', 'color' => 'dark'],
             ['name' => 'Reopened', 'code' => 'reopened', 'color' => 'danger'],
@@ -140,7 +141,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         User::query()->updateOrCreate(['email' => 'supervisor@cphl.go.ug'], [
-            'name' => 'ICT Supervisor',
+            'name' => 'Software Development Supervisor',
             'phone' => '0700000001',
             'role' => 'ict_supervisor',
             'active' => true,
@@ -151,6 +152,22 @@ class DatabaseSeeder extends Seeder
             'name' => 'ICT Support Staff',
             'phone' => '0700000002',
             'role' => 'ict_support_staff',
+            'active' => true,
+            'password' => Hash::make('password123'),
+        ]);
+
+        User::query()->updateOrCreate(['email' => 'manager@cphl.go.ug'], [
+            'name' => 'ICT Manager',
+            'phone' => '0700000003',
+            'role' => 'ict_manager',
+            'active' => true,
+            'password' => Hash::make('password123'),
+        ]);
+
+        User::query()->updateOrCreate(['email' => 'developer@cphl.go.ug'], [
+            'name' => 'Developer',
+            'phone' => '0700000004',
+            'role' => 'developer',
             'active' => true,
             'password' => Hash::make('password123'),
         ]);

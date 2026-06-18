@@ -19,6 +19,16 @@ class FacilitySyncService
         $skipped = 0;
         $fetched = 0;
         $page = 1;
+        $regionsByCode = Region::query()->get()->keyBy(fn (Region $region) => strtolower((string) $region->code));
+        $regionsByName = Region::query()->get()->keyBy(fn (Region $region) => strtolower($region->name));
+        $facilitiesByExternalId = Facility::query()
+            ->where('source_system', 'irrds')
+            ->get()
+            ->keyBy(fn (Facility $facility) => (string) $facility->external_id);
+        $facilitiesByCode = Facility::query()
+            ->whereNotNull('code')
+            ->get()
+            ->keyBy(fn (Facility $facility) => strtoupper((string) $facility->code));
 
         do {
             $response = Http::timeout(60)->get(self::FACILITY_ENDPOINT, [
@@ -41,7 +51,7 @@ class FacilitySyncService
                     continue;
                 }
 
-                $region = $this->resolveRegion($item);
+                $region = $this->resolveRegion($item, $regionsByCode, $regionsByName);
                 $attributes = $this->mapFacilityAttributes($item, $region?->id);
 
                 if (blank($attributes['name']) || blank($attributes['code']) || blank($attributes['external_id'])) {
@@ -49,26 +59,27 @@ class FacilitySyncService
                     continue;
                 }
 
-                $facility = Facility::query()
-                    ->where('source_system', 'irrds')
-                    ->where('external_id', $attributes['external_id'])
-                    ->first();
+                $facility = $facilitiesByExternalId->get((string) $attributes['external_id']);
 
                 if (! $facility && ! empty($attributes['code'])) {
-                    $facility = Facility::query()->where('code', $attributes['code'])->first();
+                    $facility = $facilitiesByCode->get(strtoupper((string) $attributes['code']));
                 }
 
                 if ($facility) {
                     $facility->fill($attributes);
                     $facility->updated_by = Auth::id();
                     $facility->save();
+                    $facilitiesByExternalId->put((string) $attributes['external_id'], $facility);
+                    $facilitiesByCode->put(strtoupper((string) $attributes['code']), $facility);
                     $updated++;
                 } else {
-                    Facility::query()->create([
+                    $facility = Facility::query()->create([
                         ...$attributes,
                         'created_by' => Auth::id(),
                         'updated_by' => Auth::id(),
                     ]);
+                    $facilitiesByExternalId->put((string) $attributes['external_id'], $facility);
+                    $facilitiesByCode->put(strtoupper((string) $attributes['code']), $facility);
                     $created++;
                 }
             }
@@ -93,7 +104,7 @@ class FacilitySyncService
         return $item;
     }
 
-    private function resolveRegion(array $item): ?Region
+    private function resolveRegion(array $item, $regionsByCode, $regionsByName): ?Region
     {
         $resolvedRegion = Arr::get($item, 'hierarchies.resolvedLocation.region')
             ?? Arr::get($item, 'hierarchy.region')
@@ -110,28 +121,21 @@ class FacilitySyncService
             return null;
         }
 
-        $region = Region::query()
-            ->where(function ($query) use ($code, $name) {
-                if ($code) {
-                    $query->where('code', $code)->orWhere('name', $name);
-                    return;
-                }
-
-                $query->where('name', $name);
-            })
-            ->first();
+        $region = $code ? $regionsByCode->get(strtolower($code)) : null;
+        $region ??= $regionsByName->get(strtolower($name));
 
         if ($region) {
             if ($code && ! $region->code) {
                 $region->code = $code;
                 $region->updated_by = Auth::id();
                 $region->save();
+                $regionsByCode->put(strtolower($code), $region);
             }
 
             return $region;
         }
 
-        return Region::query()->create([
+        $region = Region::query()->create([
             'name' => $name,
             'code' => $code,
             'active' => (bool) Arr::get($resolvedRegion, 'isActive', true),
@@ -139,6 +143,13 @@ class FacilitySyncService
             'created_by' => Auth::id(),
             'updated_by' => Auth::id(),
         ]);
+
+        if ($code) {
+            $regionsByCode->put(strtolower($code), $region);
+        }
+        $regionsByName->put(strtolower($name), $region);
+
+        return $region;
     }
 
     private function mapFacilityAttributes(array $item, ?int $regionId): array

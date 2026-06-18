@@ -48,6 +48,13 @@
         <div class="col-lg-5">
             <div class="content-card bg-white p-4 mb-4">
                 <h2 class="h5 mb-3">Update Ticket</h2>
+                <p class="text-muted small mb-3">
+                    @if ($isWorkflowManager)
+                        Assign new tickets to ICT support staff, or reassign/escalate them when needed.
+                    @else
+                        As the assigned handler, you can resolve, close, or escalate this ticket to a developer or manager.
+                    @endif
+                </p>
                 <form method="POST" action="{{ route('admin.tickets.update', $ticket) }}" class="row g-3">
                     @csrf
                     @method('PUT')
@@ -60,11 +67,11 @@
                         </select>
                     </div>
                     <div class="col-12">
-                        <label class="form-label">Assigned Staff</label>
+                        <label class="form-label">{{ $isWorkflowManager ? 'Assign To' : 'Escalate / Reassign To' }}</label>
                         <select name="assigned_to" class="form-select">
                             <option value="">Unassigned</option>
                             @foreach ($staff as $person)
-                                <option value="{{ $person->id }}" @selected($ticket->assigned_to == $person->id)>{{ $person->name }}</option>
+                                <option value="{{ $person->id }}" @selected($ticket->assigned_to == $person->id)>{{ $person->name }} ({{ \App\Models\User::roleLabels()[$person->role] ?? $person->role }})</option>
                             @endforeach
                         </select>
                     </div>
