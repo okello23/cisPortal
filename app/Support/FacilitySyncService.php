@@ -14,59 +14,70 @@ class FacilitySyncService
 
     public function syncFromIrrds(int $limit = 100): array
     {
-        $response = Http::timeout(60)->get(self::FACILITY_ENDPOINT, [
-            'limit' => $limit,
-            'search' => '',
-            'includeInactive' => 'false',
-        ])->throw();
-
-        $payload = $response->json();
-        $items = Arr::get($payload, 'data', $payload);
         $created = 0;
         $updated = 0;
         $skipped = 0;
+        $fetched = 0;
+        $page = 1;
 
-        foreach ($items as $item) {
-            $item = $this->normalizeFacilityItem($item);
+        do {
+            $response = Http::timeout(60)->get(self::FACILITY_ENDPOINT, [
+                'limit' => $limit,
+                'page' => $page,
+                'search' => '',
+                'includeInactive' => 'false',
+            ])->throw();
 
-            if (! is_array($item)) {
-                $skipped++;
-                continue;
+            $payload = $response->json();
+            $items = Arr::get($payload, 'data', $payload);
+            $pagination = Arr::get($payload, 'pagination', []);
+
+            foreach ($items as $item) {
+                $item = $this->normalizeFacilityItem($item);
+                $fetched++;
+
+                if (! is_array($item)) {
+                    $skipped++;
+                    continue;
+                }
+
+                $region = $this->resolveRegion($item);
+                $attributes = $this->mapFacilityAttributes($item, $region?->id);
+
+                if (blank($attributes['name']) || blank($attributes['code']) || blank($attributes['external_id'])) {
+                    $skipped++;
+                    continue;
+                }
+
+                $facility = Facility::query()
+                    ->where('source_system', 'irrds')
+                    ->where('external_id', $attributes['external_id'])
+                    ->first();
+
+                if (! $facility && ! empty($attributes['code'])) {
+                    $facility = Facility::query()->where('code', $attributes['code'])->first();
+                }
+
+                if ($facility) {
+                    $facility->fill($attributes);
+                    $facility->updated_by = Auth::id();
+                    $facility->save();
+                    $updated++;
+                } else {
+                    Facility::query()->create([
+                        ...$attributes,
+                        'created_by' => Auth::id(),
+                        'updated_by' => Auth::id(),
+                    ]);
+                    $created++;
+                }
             }
 
-            $region = $this->resolveRegion($item);
-            $attributes = $this->mapFacilityAttributes($item, $region?->id);
+            $hasNextPage = (bool) Arr::get($pagination, 'hasNextPage', false);
+            $page++;
+        } while ($hasNextPage);
 
-            if (blank($attributes['name']) || blank($attributes['code']) || blank($attributes['external_id'])) {
-                $skipped++;
-                continue;
-            }
-
-            $facility = Facility::query()
-                ->where('source_system', 'irrds')
-                ->where('external_id', $attributes['external_id'])
-                ->first();
-
-            if (! $facility && ! empty($attributes['code'])) {
-                $facility = Facility::query()->where('code', $attributes['code'])->first();
-            }
-
-            if ($facility) {
-                $facility->fill($attributes);
-                $facility->updated_by = Auth::id();
-                $facility->save();
-                $updated++;
-            } else {
-                Facility::query()->create([
-                    ...$attributes,
-                    'created_by' => Auth::id(),
-                    'updated_by' => Auth::id(),
-                ]);
-                $created++;
-            }
-        }
-
-        return ['created' => $created, 'updated' => $updated, 'skipped' => $skipped, 'fetched' => is_countable($items) ? count($items) : 0];
+        return ['created' => $created, 'updated' => $updated, 'skipped' => $skipped, 'fetched' => $fetched];
     }
 
     private function normalizeFacilityItem(mixed $item): ?array

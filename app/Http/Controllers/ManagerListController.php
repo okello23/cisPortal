@@ -16,6 +16,7 @@ use App\Support\AuditService;
 use App\Support\FacilitySyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
@@ -31,6 +32,18 @@ class ManagerListController extends Controller
     public function index(string $list): View
     {
         $this->authorizeUser();
+
+        if ($list === 'facilities' && request()->query('action') === 'reset_data') {
+            DB::transaction(function () {
+                Facility::query()->delete();
+                Region::query()->delete();
+            });
+        }
+
+        if ($list === 'facilities' && request()->query('action') === 'sync_irrds') {
+            $this->facilitySyncService->syncFromIrrds();
+        }
+
         [$modelClass, $fields, $title] = $this->resolveList($list);
         $recordsQuery = $modelClass::query()->orderBy('sort_order')->orderBy('name');
 
@@ -61,12 +74,31 @@ class ManagerListController extends Controller
         return back()->with('status', "Facilities synced from IRRDS. Created {$result['created']}, updated {$result['updated']}, skipped {$result['skipped']}.");
     }
 
+    public function resetFacilityData(Request $request): RedirectResponse
+    {
+        $this->authorizeUser();
+
+        DB::transaction(function () {
+            Facility::query()->delete();
+            Region::query()->delete();
+        });
+
+        $result = ['facilities_deleted' => true, 'regions_deleted' => true];
+        $this->auditService->log('facilities.reset', $request->user(), null, $result, Auth::id(), $request);
+
+        return back()->with('status', 'Facility and region data cleared successfully.');
+    }
+
     public function store(Request $request, string $list): RedirectResponse
     {
         $this->authorizeUser();
 
         if ($list === 'facilities' && $request->input('_intent') === 'sync_irrds') {
             return $this->syncFacilities($request);
+        }
+
+        if ($list === 'facilities' && $request->input('_intent') === 'reset_data') {
+            return $this->resetFacilityData($request);
         }
 
         [$modelClass, $fields] = $this->resolveList($list);
@@ -85,6 +117,10 @@ class ManagerListController extends Controller
 
         if ($list === 'facilities' && $id === 'sync') {
             return $this->syncFacilities($request);
+        }
+
+        if ($list === 'facilities' && $id === 'reset') {
+            return $this->resetFacilityData($request);
         }
 
         [$modelClass, $fields] = $this->resolveList($list);
