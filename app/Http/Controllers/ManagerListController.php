@@ -14,10 +14,13 @@ use App\Models\SupportSystem;
 use App\Models\TicketStatus;
 use App\Support\AuditService;
 use App\Support\FacilitySyncService;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class ManagerListController extends Controller
@@ -102,7 +105,7 @@ class ManagerListController extends Controller
         }
 
         [$modelClass, $fields] = $this->resolveList($list);
-        $validated = $this->validatePayload($request, $fields);
+        $validated = $this->validatePayload($request, $modelClass, $fields);
         $validated['created_by'] = Auth::id();
         $validated['updated_by'] = Auth::id();
         $record = $modelClass::query()->create($validated);
@@ -124,8 +127,8 @@ class ManagerListController extends Controller
         }
 
         [$modelClass, $fields] = $this->resolveList($list);
-        $validated = $this->validatePayload($request, $fields);
         $record = $modelClass::query()->findOrFail($id);
+        $validated = $this->validatePayload($request, $modelClass, $fields, $record);
         $old = $record->toArray();
         $record->fill($validated);
         $record->updated_by = Auth::id();
@@ -135,11 +138,19 @@ class ManagerListController extends Controller
         return back()->with('status', 'List item updated successfully.');
     }
 
-    private function validatePayload(Request $request, array $fields): array
+    private function validatePayload(Request $request, string $modelClass, array $fields, ?Model $record = null): array
     {
+        /** @var Model $model */
+        $model = new $modelClass;
+
         $rules = [
             'name' => ['required', 'string', 'max:255'],
-            'code' => ['nullable', 'string', 'max:50'],
+            'code' => [
+                'nullable',
+                'string',
+                'max:50',
+                Rule::unique($model->getTable(), 'code')->ignore($record?->getKey()),
+            ],
             'description' => ['nullable', 'string'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'active' => ['nullable', 'boolean'],
@@ -162,9 +173,38 @@ class ManagerListController extends Controller
         }
 
         $validated = $request->validate($rules);
+        $validated['code'] = $this->resolveCodeValue($modelClass, $validated['name'], $validated['code'] ?? null, $record);
         $validated['active'] = $request->boolean('active', true);
 
         return $validated;
+    }
+
+    private function resolveCodeValue(string $modelClass, string $name, ?string $code, ?Model $record = null): string
+    {
+        $baseCode = Str::upper(Str::slug($code ?: $name, ''));
+        $baseCode = Str::limit($baseCode, 50, '');
+
+        if ($baseCode === '') {
+            $baseCode = 'ITEM';
+        }
+
+        /** @var Model $model */
+        $model = new $modelClass;
+        $table = $model->getTable();
+        $candidate = $baseCode;
+        $suffix = 1;
+
+        while (DB::table($table)
+            ->where('code', $candidate)
+            ->when($record, fn ($query) => $query->where('id', '!=', $record->getKey()))
+            ->exists()) {
+            $numericSuffix = (string) $suffix;
+            $trimmedBase = Str::limit($baseCode, 50 - strlen($numericSuffix), '');
+            $candidate = $trimmedBase.$numericSuffix;
+            $suffix++;
+        }
+
+        return $candidate;
     }
 
     private function resolveList(string $list): array

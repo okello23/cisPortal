@@ -4,12 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Mail\NewTicketAlertMail;
 use App\Mail\TicketConfirmationMail;
-use App\Models\Department;
 use App\Models\Facility;
 use App\Models\IssueType;
 use App\Models\PriorityLevel;
 use App\Models\Region;
-use App\Models\SupportModule;
 use App\Models\SupportSystem;
 use App\Models\Ticket;
 use App\Models\TicketStatus;
@@ -32,7 +30,6 @@ class PublicTicketController extends Controller
     public function create(Request $request): View
     {
         $systemQuery = $request->string('system_name')->toString() ?: $request->string('system')->toString();
-        $moduleQuery = $request->string('module_name')->toString() ?: $request->string('module')->toString();
         $selectedSystem = SupportSystem::query()
             ->when($systemQuery !== '', function ($query) use ($systemQuery) {
                 $query->where(function ($nested) use ($systemQuery) {
@@ -42,30 +39,11 @@ class PublicTicketController extends Controller
             })
             ->value('id');
 
-        $selectedModule = SupportModule::query()
-            ->when($moduleQuery !== '', function ($query) use ($moduleQuery, $selectedSystem) {
-                $query->where(function ($nested) use ($moduleQuery) {
-                    $nested->where('code', strtolower($moduleQuery))
-                        ->orWhere('name', $moduleQuery);
-                });
-                if ($selectedSystem) {
-                    $query->where('system_id', $selectedSystem);
-                }
-            })
-            ->value('id');
-
         return view('tickets.create', [
             'selectedSystem' => $selectedSystem,
-            'selectedModule' => $selectedModule,
             'systems' => SupportSystem::query()->where('active', true)->orderBy('sort_order')->get(),
-            'modules' => SupportModule::query()
-                ->where('active', true)
-                ->when($selectedSystem, fn ($query) => $query->where('system_id', $selectedSystem))
-                ->orderBy('sort_order')
-                ->get(),
             'regions' => Region::query()->where('active', true)->orderBy('sort_order')->get(),
             'facilities' => Facility::query()->where('active', true)->orderBy('sort_order')->get(),
-            'departments' => Department::query()->where('active', true)->orderBy('sort_order')->get(),
             'issueTypes' => IssueType::query()->where('active', true)->orderBy('sort_order')->get(),
             'priorityLevels' => PriorityLevel::query()->where('active', true)->orderBy('sort_order')->get(),
         ]);
@@ -75,32 +53,16 @@ class PublicTicketController extends Controller
     {
         $validated = $request->validate([
             'system_id' => ['required', 'exists:support_systems,id'],
-            'module_id' => ['nullable', 'exists:support_modules,id'],
             'full_name' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:50'],
             'email' => ['required', 'email', 'max:255'],
             'region_id' => ['nullable', 'exists:regions,id'],
             'facility_id' => ['nullable', 'exists:facilities,id'],
-            'department_id' => ['nullable', 'exists:departments,id'],
             'issue_type_id' => ['required', 'exists:issue_types,id'],
             'priority_level_id' => ['required', 'exists:priority_levels,id'],
             'description' => ['required', 'string', 'min:10'],
             'attachment' => ['nullable', 'file', 'max:4096'],
-            'source_url' => ['nullable', 'url', 'max:2048'],
         ]);
-
-        if (! empty($validated['module_id'])) {
-            $moduleBelongsToSystem = SupportModule::query()
-                ->whereKey($validated['module_id'])
-                ->where('system_id', $validated['system_id'])
-                ->exists();
-
-            if (! $moduleBelongsToSystem) {
-                return back()
-                    ->withErrors(['module_id' => 'The selected module does not belong to the selected system.'])
-                    ->withInput();
-            }
-        }
 
         $status = TicketStatus::query()->where('code', 'new')->firstOrFail();
         $priority = PriorityLevel::query()->findOrFail($validated['priority_level_id']);

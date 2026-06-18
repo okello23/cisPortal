@@ -26,15 +26,6 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Module Name</label>
-                        <select name="module_id" class="form-select" id="module-select">
-                            <option value="">Select module</option>
-                            @foreach ($modules as $module)
-                                <option value="{{ $module->id }}" data-system-id="{{ $module->system_id }}" @selected(old('module_id', $selectedModule) == $module->id)>{{ $module->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
 
                     <div class="col-12">
                         <h2 class="h5">User Information</h2>
@@ -82,16 +73,6 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Department/Unit</label>
-                        <select name="department_id" class="form-select">
-                            <option value="">Select department</option>
-                            @foreach ($departments as $department)
-                                <option value="{{ $department->id }}" @selected(old('department_id') == $department->id)>{{ $department->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
                     <div class="col-12">
                         <h2 class="h5">Ticket Information</h2>
                     </div>
@@ -121,10 +102,6 @@
                         <label class="form-label">Attachment/Screenshot</label>
                         <input type="file" name="attachment" class="form-control">
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Source URL</label>
-                        <input type="url" name="source_url" class="form-control" value="{{ old('source_url', url()->previous()) }}">
-                    </div>
 
                     <div class="col-12 d-flex justify-content-end">
                         <button class="btn btn-dark btn-lg rounded-pill px-4">Submit Ticket</button>
@@ -137,24 +114,11 @@
 
 @push('scripts')
     <script>
-        const systemSelect = document.getElementById('system-select');
-        const moduleSelect = document.getElementById('module-select');
-        const moduleOptions = Array.from(moduleSelect.querySelectorAll('option[data-system-id]'));
         const regionSelect = document.getElementById('region-select');
         const districtSelect = document.getElementById('district-select');
         const facilitySelect = document.getElementById('facility-select');
         const facilityOptions = Array.from(facilitySelect.querySelectorAll('option[data-region-id]'));
         const selectedDistrict = @json(old('district_name'));
-
-        function syncModules() {
-            const systemId = systemSelect.value;
-            moduleOptions.forEach(option => {
-                option.hidden = systemId && option.dataset.systemId !== systemId;
-            });
-            if (moduleSelect.selectedOptions[0]?.hidden) {
-                moduleSelect.value = '';
-            }
-        }
 
         function buildDistrictOptions() {
             const regionId = regionSelect.value;
@@ -225,7 +189,6 @@
         });
         districtSelect.addEventListener('change', syncFacilities);
 
-        syncModules();
         syncLocationCascade();
     </script>
 @endpush
