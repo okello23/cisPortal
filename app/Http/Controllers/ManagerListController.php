@@ -62,6 +62,11 @@ class ManagerListController extends Controller
     public function store(Request $request, string $list): RedirectResponse
     {
         $this->authorizeUser();
+
+        if ($list === 'facilities' && $request->input('_intent') === 'sync_irrds') {
+            return $this->syncFacilities($request);
+        }
+
         [$modelClass, $fields] = $this->resolveList($list);
         $validated = $this->validatePayload($request, $fields);
         $validated['created_by'] = Auth::id();
