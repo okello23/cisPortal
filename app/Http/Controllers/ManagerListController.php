@@ -77,9 +77,14 @@ class ManagerListController extends Controller
         return back()->with('status', 'List item created successfully.');
     }
 
-    public function update(Request $request, string $list, int $id): RedirectResponse
+    public function update(Request $request, string $list, string $id): RedirectResponse
     {
         $this->authorizeUser();
+
+        if ($list === 'facilities' && $id === 'sync') {
+            return $this->syncFacilities($request);
+        }
+
         [$modelClass, $fields] = $this->resolveList($list);
         $validated = $this->validatePayload($request, $fields);
         $record = $modelClass::query()->findOrFail($id);

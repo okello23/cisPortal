@@ -7,9 +7,9 @@
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                     <h1 class="h4 mb-0">{{ $title }}</h1>
                     @if ($listKey === 'facilities')
-                        <form method="POST" action="{{ route('lists.store', 'facilities') }}">
+                        <form method="POST" action="{{ url('/lists/facilities/sync') }}">
                             @csrf
-                            <input type="hidden" name="_intent" value="sync_irrds">
+                            @method('PUT')
                             <button class="btn btn-outline-dark rounded-pill">Sync From IRRDS</button>
                         </form>
                     @endif
