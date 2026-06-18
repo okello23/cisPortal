@@ -28,12 +28,9 @@
                         </select>
                     </div>
                     <div class="col-12">
-                        <label class="form-label">Password</label>
-                        <input type="password" name="password" class="form-control" required>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Confirm Password</label>
-                        <input type="password" name="password_confirmation" class="form-control" required>
+                        <div class="alert alert-info mb-0 small">
+                            A secure password will be generated automatically and sent to the user's email address.
+                        </div>
                     </div>
                     <div class="col-12 form-check ms-1">
                         <input type="checkbox" class="form-check-input" id="active" name="active" value="1" checked>

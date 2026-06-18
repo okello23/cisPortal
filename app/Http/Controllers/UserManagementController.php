@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\UserAccountCreatedMail;
 use App\Models\User;
 use App\Support\AuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -36,9 +39,10 @@ class UserManagementController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'phone' => ['nullable', 'string', 'max:50'],
             'role' => ['required', Rule::in(array_keys($this->roles()))],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
             'active' => ['nullable', 'boolean'],
         ]);
+
+        $generatedPassword = Str::password(12);
 
         $user = User::query()->create([
             'name' => $validated['name'],
@@ -46,12 +50,14 @@ class UserManagementController extends Controller
             'phone' => $validated['phone'] ?? null,
             'role' => $validated['role'],
             'active' => $request->boolean('active', true),
-            'password' => Hash::make($validated['password']),
+            'password' => Hash::make($generatedPassword),
         ]);
 
         $this->auditService->log('user.created', $user, null, $user->toArray(), Auth::id(), $request);
 
-        return back()->with('status', 'User created successfully.');
+        Mail::to($user->email)->send(new UserAccountCreatedMail($user, $generatedPassword));
+
+        return back()->with('status', 'User created successfully. Login details have been emailed to the user.');
     }
 
     public function update(Request $request, User $user): RedirectResponse
