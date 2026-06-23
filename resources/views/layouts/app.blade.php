@@ -55,6 +55,20 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
+
+        .btn-cis-orange {
+            background: #f28c28;
+            border-color: #f28c28;
+            color: #fff;
+        }
+
+        .btn-cis-orange:hover,
+        .btn-cis-orange:focus-visible,
+        .btn-cis-orange:active {
+            background: #dc7d21 !important;
+            border-color: #dc7d21 !important;
+            color: #fff !important;
+        }
     </style>
 </head>
 <body>
@@ -68,7 +82,7 @@
                 <div class="ms-auto d-flex gap-2 align-items-center">
                     <a class="btn btn-outline-dark rounded-pill px-4" href="{{ route('tickets.create', [], false) }}">Report Issue</a>
                     @if (request()->routeIs('dashboard.public'))
-                        <a class="btn btn-dark rounded-pill px-4" href="{{ route('tickets.create', [], false) }}">Log New Issue</a>
+                        <a class="btn btn-cis-orange rounded-pill px-4" href="{{ route('tickets.create', [], false) }}">Log New Issue</a>
                     @endif
                     <a class="btn btn-outline-dark rounded-pill px-4" href="{{ route('tickets.track', [], false) }}">Track Ticket</a>
                     <a class="btn btn-dark rounded-pill px-4" href="{{ auth()->check() ? route('dashboard', [], false) : route('login', [], false) }}">
