@@ -34,6 +34,7 @@
         .home-hero .metric-card {
             backdrop-filter: blur(10px);
             background: rgba(255, 255, 255, 0.9);
+            border-radius: 1.25rem;
         }
 
         .home-hero .lead,
@@ -68,9 +69,31 @@
             }
         }
 
-        .home-stats-strip .metric-card {
-            background: rgba(255, 255, 255, 0.96);
-            border-radius: 1.25rem;
+        .hero-stats-panel {
+            padding-left: 1rem;
+        }
+
+        .hero-stats-group-title {
+            color: rgba(255, 255, 255, 0.82);
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .hero-stats-date {
+            color: rgba(255, 255, 255, 0.74);
+            font-size: 0.85rem;
+        }
+
+        .hero-stats-panel .metric-card .text-muted {
+            color: #52606d !important;
+        }
+
+        @media (max-width: 991.98px) {
+            .hero-stats-panel {
+                padding-left: 0;
+            }
         }
     </style>
 
@@ -86,89 +109,46 @@
                 </div>
             </div>
             <div class="col-lg-5">
-                <div class="row g-3">
-                    <div class="col-6">
-                        <div class="metric-card p-3 h-100">
-                            <div class="text-muted small">Tickets Logged</div>
-                            <div class="fs-2 fw-bold">{{ $stats['total'] }}</div>
-                        </div>
+                <div class="hero-stats-panel">
+                    <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
+                        <div class="hero-stats-group-title">Today's Snapshot</div>
+                        <div class="hero-stats-date">{{ now()->format('d M Y') }}</div>
                     </div>
-                    <div class="col-6">
-                        <div class="metric-card p-3 h-100">
-                            <div class="text-muted small">Open Tickets</div>
-                            <div class="fs-2 fw-bold">{{ $stats['open'] }}</div>
-                        </div>
+                    <div class="row g-3 mb-4">
+                        @foreach ([
+                            'Logged Today' => $todayStats['total'],
+                            'Opened Today' => $todayStats['open'],
+                            'Resolved Today' => $todayStats['resolved'],
+                            'Facilities Today' => $todayStats['facilities'],
+                        ] as $label => $value)
+                            <div class="col-6">
+                                <div class="metric-card p-3 h-100">
+                                    <div class="text-muted small">{{ $label }}</div>
+                                    <div class="fs-2 fw-bold">{{ $value }}</div>
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
-                    <div class="col-6">
-                        <div class="metric-card p-3 h-100">
-                            <div class="text-muted small">Resolved</div>
-                            <div class="fs-2 fw-bold">{{ $stats['resolved'] }}</div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="metric-card p-3 h-100">
-                            <div class="text-muted small">Logged Today</div>
-                            <div class="fs-2 fw-bold">{{ $stats['today'] }}</div>
-                        </div>
+
+                    <div class="hero-stats-group-title mb-3">All-Time Overview</div>
+                    <div class="row g-3">
+                        @foreach ([
+                            'Total Tickets' => $overviewStats['total'] ?? 0,
+                            'Open Tickets' => $overviewStats['open'] ?? 0,
+                            'This Month' => $overviewStats['this_month'] ?? 0,
+                            'Avg Hours' => $overviewStats['average_resolution_hours'] ?? 0,
+                            'Facilities' => $overviewStats['facilities'] ?? 0,
+                            'Systems' => $overviewStats['systems'] ?? 0,
+                        ] as $label => $value)
+                            <div class="col-6">
+                                <div class="metric-card p-3 h-100">
+                                    <div class="text-muted small">{{ $label }}</div>
+                                    <div class="fs-4 fw-bold">{{ $value }}</div>
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
                 </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="content-card bg-white p-4 p-lg-5 mb-4">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-            <div>
-                <p class="text-uppercase text-muted fw-semibold small mb-1">Live Statistics</p>
-                <h2 class="h4 mb-0">Today and all-time performance overview</h2>
-            </div>
-            <a class="btn btn-outline-dark rounded-pill px-4" href="{{ route('dashboard.public') }}">Open Full Dashboard</a>
-        </div>
-
-        <div class="mb-4">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                <h3 class="h5 mb-0">Today's Snapshot</h3>
-                <span class="text-muted small">{{ now()->format('l, d F Y') }}</span>
-            </div>
-            <div class="row g-3 home-stats-strip">
-                @foreach ([
-                    'Tickets Logged Today' => $todayStats['total'],
-                    'Opened Today' => $todayStats['open'],
-                    'Resolved Today' => $todayStats['resolved'],
-                    'Closed Today' => $todayStats['closed'],
-                    'Facilities Reporting Today' => $todayStats['facilities'],
-                ] as $label => $value)
-                    <div class="col-md-6 col-xl">
-                        <div class="metric-card p-3 h-100">
-                            <div class="text-muted small">{{ $label }}</div>
-                            <div class="fs-3 fw-bold">{{ $value }}</div>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-
-        <div>
-            <h3 class="h5 mb-3">All-Time Overview</h3>
-            <div class="row g-3 home-stats-strip">
-                @foreach ([
-                    'Total Tickets' => $overviewStats['total'],
-                    'Open Tickets' => $overviewStats['open'],
-                    'Resolved Tickets' => $overviewStats['resolved'],
-                    'Closed Tickets' => $overviewStats['closed'],
-                    'Overdue Tickets' => $overviewStats['overdue'],
-                    'Tickets Logged This Month' => $overviewStats['this_month'],
-                    'Facilities With Tickets' => $overviewStats['facilities'],
-                    'Systems With Tickets' => $overviewStats['systems'],
-                    'Avg Resolution Hours' => $overviewStats['average_resolution_hours'],
-                ] as $label => $value)
-                    <div class="col-md-4 col-xl">
-                        <div class="metric-card p-3 h-100">
-                            <div class="text-muted small">{{ $label }}</div>
-                            <div class="fs-3 fw-bold">{{ $value }}</div>
-                        </div>
-                    </div>
-                @endforeach
             </div>
         </div>
     </section>

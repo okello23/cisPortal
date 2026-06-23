@@ -110,8 +110,18 @@ class PublicDashboardController extends Controller
     private function filteredStats(Builder $query): array
     {
         $resolvedCodes = ['resolved', 'closed'];
+        $baseQuery = clone $query;
 
         return [
+            'total' => (clone $baseQuery)->count(),
+            'open' => (clone $baseQuery)
+                ->whereHas('status', fn ($status) => $status->whereNotIn('code', $resolvedCodes))
+                ->count(),
+            'this_month' => (clone $baseQuery)
+                ->whereBetween('created_at', [now()->copy()->startOfMonth(), now()->copy()->endOfMonth()])
+                ->count(),
+            'facilities' => (clone $baseQuery)->distinct('facility_id')->whereNotNull('facility_id')->count('facility_id'),
+            'systems' => (clone $baseQuery)->distinct('system_id')->whereNotNull('system_id')->count('system_id'),
             'total_logged' => (clone $query)->count(),
             'assigned' => (clone $query)->whereNotNull('assigned_to')->count(),
             'pending_assignment' => (clone $query)
