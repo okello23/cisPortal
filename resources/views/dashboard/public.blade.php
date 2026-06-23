@@ -81,14 +81,6 @@
     </style>
 
     <div class="public-dashboard-shell">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-            <div>
-                <p class="text-uppercase text-muted fw-semibold small mb-1">Public Transparency Dashboard</p>
-                <h1 class="h2 mb-0">ICT support performance at a glance</h1>
-            </div>
-            <a class="btn btn-dark rounded-pill px-4" href="{{ route('tickets.create') }}">Log New Issue</a>
-        </div>
-
         <div class="content-card bg-white p-4 mb-4">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                 <div>
