@@ -24,7 +24,69 @@ class PublicDashboardController extends Controller
 
     public function index(Request $request): View
     {
-        return view('dashboard.public');
+        $todayStats = $this->dailyStats();
+        $filteredQuery = $this->filteredTicketsQuery($request);
+        $stats = $this->filteredStats(clone $filteredQuery);
+        $metricCards = $this->metricCards(clone $filteredQuery, $stats);
+
+        return view('dashboard.public', [
+            'todayStats' => $todayStats,
+            'stats' => $stats,
+            'insightCards' => $this->insightCards($stats),
+            'periodOptions' => $this->periodOptions(),
+            'systems' => SupportSystem::query()->where('active', true)->orderBy('name')->get(),
+            'facilities' => Facility::query()->where('active', true)->orderBy('name')->get(),
+            'facilityTypes' => Facility::query()
+                ->where('active', true)
+                ->whereNotNull('facility_type')
+                ->where('facility_type', '!=', '')
+                ->orderBy('facility_type')
+                ->distinct()
+                ->pluck('facility_type'),
+            'selectedDate' => now()->format('l, d F Y'),
+            'filteredDateLabel' => $this->selectedDateLabel($request),
+            'metricCards' => $metricCards,
+            'monthlyTrend' => $this->monthlyTrend(clone $filteredQuery),
+            'statusBreakdown' => $this->statusBreakdown($stats),
+            'resolutionBuckets' => $this->resolutionBuckets(clone $filteredQuery),
+            'topSystemsKpis' => $this->topSystemsKpis(clone $filteredQuery),
+            'facilityLeaders' => $this->facilityLeaders(clone $filteredQuery),
+            'bySystem' => (clone $filteredQuery)
+                ->select('support_systems.name', DB::raw('count(*) as total'))
+                ->join('support_systems', 'support_systems.id', '=', 'tickets.system_id')
+                ->groupBy('support_systems.name')
+                ->orderByDesc('total')
+                ->get(),
+            'byRegion' => (clone $filteredQuery)
+                ->select('regions.name', DB::raw('count(*) as total'))
+                ->leftJoin('regions', 'regions.id', '=', 'tickets.region_id')
+                ->groupBy('regions.name')
+                ->orderByDesc('total')
+                ->get(),
+            'byFacility' => (clone $filteredQuery)
+                ->select('facilities.name', DB::raw('count(*) as total'))
+                ->leftJoin('facilities', 'facilities.id', '=', 'tickets.facility_id')
+                ->groupBy('facilities.name')
+                ->orderByDesc('total')
+                ->limit(10)
+                ->get(),
+            'commonIssues' => (clone $filteredQuery)
+                ->select('issue_types.name', DB::raw('count(*) as total'))
+                ->join('issue_types', 'issue_types.id', '=', 'tickets.issue_type_id')
+                ->groupBy('issue_types.name')
+                ->orderByDesc('total')
+                ->limit(10)
+                ->get(),
+            'repeatIssues' => (clone $filteredQuery)
+                ->select('facilities.name as facility_name', 'issue_types.name as issue_name', DB::raw('count(*) as total'))
+                ->leftJoin('facilities', 'facilities.id', '=', 'tickets.facility_id')
+                ->join('issue_types', 'issue_types.id', '=', 'tickets.issue_type_id')
+                ->groupBy('facilities.name', 'issue_types.name')
+                ->havingRaw('count(*) > 1')
+                ->orderByDesc('total')
+                ->limit(10)
+                ->get(),
+        ]);
     }
 
     private function dailyStats(): array
