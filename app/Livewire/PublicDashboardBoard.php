@@ -1,30 +1,112 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Livewire;
 
 use App\Models\Facility;
 use App\Models\SupportSystem;
 use App\Models\Ticket;
-use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Livewire\Component;
 
-class PublicDashboardController extends Controller
+class PublicDashboardBoard extends Component
 {
-    public function home(): View
+    public string $period = 'all_time';
+    public ?string $facilityId = '';
+    public ?string $facilityType = '';
+    public ?string $systemId = '';
+    public ?string $startDate = '';
+    public ?string $endDate = '';
+
+    public function mount(): void
     {
-        return view('home', [
-            'stats' => $this->homeStats(),
-            'todayStats' => $this->dailyStats(),
-            'overviewStats' => $this->filteredStats(Ticket::query()),
-        ]);
+        $this->period = request()->string('period')->toString() ?: 'all_time';
+        $this->facilityId = request()->string('facility_id')->toString();
+        $this->facilityType = request()->string('facility_type')->toString();
+        $this->systemId = request()->string('system_id')->toString();
+        $this->startDate = request()->string('start_date')->toString();
+        $this->endDate = request()->string('end_date')->toString();
     }
 
-    public function index(Request $request): View
+    public function updatedPeriod(string $value): void
     {
-        return view('dashboard.public');
+        if ($value !== 'custom') {
+            $this->startDate = '';
+            $this->endDate = '';
+        }
+    }
+
+    public function resetFilters(): void
+    {
+        $this->period = 'all_time';
+        $this->facilityId = '';
+        $this->facilityType = '';
+        $this->systemId = '';
+        $this->startDate = '';
+        $this->endDate = '';
+    }
+
+    public function render(): View
+    {
+        $todayStats = $this->dailyStats();
+        $filteredQuery = $this->filteredTicketsQuery();
+        $stats = $this->filteredStats(clone $filteredQuery);
+        $metricCards = $this->metricCards(clone $filteredQuery, $stats);
+
+        return view('livewire.public-dashboard-board', [
+            'todayStats' => $todayStats,
+            'stats' => $stats,
+            'periodOptions' => $this->periodOptions(),
+            'systems' => SupportSystem::query()->where('active', true)->orderBy('name')->get(),
+            'facilities' => Facility::query()->where('active', true)->orderBy('name')->get(),
+            'facilityTypes' => Facility::query()
+                ->where('active', true)
+                ->whereNotNull('facility_type')
+                ->where('facility_type', '!=', '')
+                ->orderBy('facility_type')
+                ->distinct()
+                ->pluck('facility_type'),
+            'selectedDate' => now()->format('l, d F Y'),
+            'filteredDateLabel' => $this->selectedDateLabel(),
+            'metricCards' => $metricCards,
+            'bySystem' => (clone $filteredQuery)
+                ->select('support_systems.name', DB::raw('count(*) as total'))
+                ->join('support_systems', 'support_systems.id', '=', 'tickets.system_id')
+                ->groupBy('support_systems.name')
+                ->orderByDesc('total')
+                ->get(),
+            'byRegion' => (clone $filteredQuery)
+                ->select('regions.name', DB::raw('count(*) as total'))
+                ->leftJoin('regions', 'regions.id', '=', 'tickets.region_id')
+                ->groupBy('regions.name')
+                ->orderByDesc('total')
+                ->get(),
+            'byFacility' => (clone $filteredQuery)
+                ->select('facilities.name', DB::raw('count(*) as total'))
+                ->leftJoin('facilities', 'facilities.id', '=', 'tickets.facility_id')
+                ->groupBy('facilities.name')
+                ->orderByDesc('total')
+                ->limit(10)
+                ->get(),
+            'commonIssues' => (clone $filteredQuery)
+                ->select('issue_types.name', DB::raw('count(*) as total'))
+                ->join('issue_types', 'issue_types.id', '=', 'tickets.issue_type_id')
+                ->groupBy('issue_types.name')
+                ->orderByDesc('total')
+                ->limit(10)
+                ->get(),
+            'repeatIssues' => (clone $filteredQuery)
+                ->select('facilities.name as facility_name', 'issue_types.name as issue_name', DB::raw('count(*) as total'))
+                ->leftJoin('facilities', 'facilities.id', '=', 'tickets.facility_id')
+                ->join('issue_types', 'issue_types.id', '=', 'tickets.issue_type_id')
+                ->groupBy('facilities.name', 'issue_types.name')
+                ->havingRaw('count(*) > 1')
+                ->orderByDesc('total')
+                ->limit(10)
+                ->get(),
+        ]);
     }
 
     private function dailyStats(): array
@@ -38,16 +120,6 @@ class PublicDashboardController extends Controller
             'closed' => (clone $query)->whereDate('closed_at', $today)->count(),
             'open' => (clone $query)->whereDate('created_at', $today)->whereHas('status', fn ($status) => $status->whereNotIn('code', ['resolved', 'closed']))->count(),
             'facilities' => (clone $query)->whereDate('created_at', $today)->distinct('facility_id')->whereNotNull('facility_id')->count('facility_id'),
-        ];
-    }
-
-    private function homeStats(): array
-    {
-        return [
-            'total' => Ticket::query()->count(),
-            'open' => Ticket::query()->whereHas('status', fn ($status) => $status->whereNotIn('code', ['resolved', 'closed']))->count(),
-            'resolved' => Ticket::query()->whereHas('status', fn ($status) => $status->where('code', 'resolved'))->count(),
-            'today' => Ticket::query()->whereDate('created_at', now()->toDateString())->count(),
         ];
     }
 
@@ -83,24 +155,24 @@ class PublicDashboardController extends Controller
         ];
     }
 
-    private function filteredTicketsQuery(Request $request): Builder
+    private function filteredTicketsQuery(): Builder
     {
         $query = Ticket::query();
 
-        if ($request->filled('system_id')) {
-            $query->where('system_id', $request->integer('system_id'));
+        if ($this->systemId !== '') {
+            $query->where('system_id', (int) $this->systemId);
         }
 
-        if ($request->filled('facility_id')) {
-            $query->where('facility_id', $request->integer('facility_id'));
+        if ($this->facilityId !== '') {
+            $query->where('facility_id', (int) $this->facilityId);
         }
 
-        if ($request->filled('facility_type')) {
-            $facilityType = $request->string('facility_type')->trim()->toString();
+        if ($this->facilityType !== '') {
+            $facilityType = trim($this->facilityType);
             $query->whereHas('facility', fn (Builder $facilityQuery) => $facilityQuery->where('facility_type', $facilityType));
         }
 
-        [$from, $to] = $this->periodRange($request);
+        [$from, $to] = $this->periodRange();
 
         if ($from && $to) {
             $query->whereBetween('created_at', [$from, $to]);
@@ -109,17 +181,16 @@ class PublicDashboardController extends Controller
         return $query;
     }
 
-    private function periodRange(Request $request): array
+    private function periodRange(): array
     {
         $now = now();
-        $period = $request->string('period')->toString() ?: 'all_time';
 
-        return match ($period) {
+        return match ($this->period ?: 'all_time') {
             'today' => [$now->copy()->startOfDay(), $now->copy()->endOfDay()],
             'this_week' => [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()],
             'this_month' => [$now->copy()->startOfMonth(), $now->copy()->endOfMonth()],
             'this_year' => [$now->copy()->startOfYear(), $now->copy()->endOfYear()],
-            'custom' => $this->customDateRange($request),
+            'custom' => $this->customDateRange(),
             default => [null, null],
         };
     }
@@ -136,14 +207,14 @@ class PublicDashboardController extends Controller
         ];
     }
 
-    private function customDateRange(Request $request): array
+    private function customDateRange(): array
     {
-        if (! $request->filled('start_date') || ! $request->filled('end_date')) {
+        if ($this->startDate === '' || $this->endDate === '') {
             return [null, null];
         }
 
-        $start = Carbon::parse($request->string('start_date')->toString())->startOfDay();
-        $end = Carbon::parse($request->string('end_date')->toString())->endOfDay();
+        $start = Carbon::parse($this->startDate)->startOfDay();
+        $end = Carbon::parse($this->endDate)->endOfDay();
 
         if ($start->greaterThan($end)) {
             [$start, $end] = [$end->copy()->startOfDay(), $start->copy()->endOfDay()];
@@ -152,28 +223,26 @@ class PublicDashboardController extends Controller
         return [$start, $end];
     }
 
-    private function selectedDateLabel(Request $request): string
+    private function selectedDateLabel(): string
     {
-        $period = $request->string('period')->toString() ?: 'all_time';
-
-        return match ($period) {
+        return match ($this->period ?: 'all_time') {
             'today' => 'Today only',
             'this_week' => 'This week',
             'this_month' => 'This month',
             'this_year' => 'This year',
-            'custom' => $this->customDateLabel($request),
+            'custom' => $this->customDateLabel(),
             default => 'All time',
         };
     }
 
-    private function customDateLabel(Request $request): string
+    private function customDateLabel(): string
     {
-        if (! $request->filled('start_date') || ! $request->filled('end_date')) {
+        if ($this->startDate === '' || $this->endDate === '') {
             return 'Custom date range';
         }
 
-        $start = Carbon::parse($request->string('start_date')->toString());
-        $end = Carbon::parse($request->string('end_date')->toString());
+        $start = Carbon::parse($this->startDate);
+        $end = Carbon::parse($this->endDate);
 
         if ($start->isSameDay($end)) {
             return $start->format('l, d F Y');
@@ -262,228 +331,6 @@ class PublicDashboardController extends Controller
         ];
     }
 
-    private function insightCards(array $stats): array
-    {
-        return [
-            [
-                'label' => 'Tickets in Scope',
-                'value' => $stats['total'] ?? 0,
-                'tone' => 'gold',
-                'icon' => 'alert',
-            ],
-            [
-                'label' => 'Open Right Now',
-                'value' => $stats['open'] ?? 0,
-                'tone' => 'teal',
-                'icon' => 'stack',
-            ],
-            [
-                'label' => 'Pending Assignment',
-                'value' => $stats['pending_assignment'] ?? 0,
-                'tone' => 'orange',
-                'icon' => 'pause',
-            ],
-            [
-                'label' => 'Avg Resolution Hours',
-                'value' => $stats['average_resolution_hours'] ?? 0,
-                'tone' => 'navy',
-                'icon' => 'clock',
-            ],
-            [
-                'label' => 'Escalated to Devs',
-                'value' => $stats['escalated'] ?? 0,
-                'tone' => 'plum',
-                'icon' => 'flag',
-            ],
-            [
-                'label' => 'Facilities Reporting',
-                'value' => $stats['facilities_reporting'] ?? 0,
-                'tone' => 'sage',
-                'icon' => 'facility',
-            ],
-        ];
-    }
-
-    private function monthlyTrend(Builder $query, int $months = 6): array
-    {
-        $start = now()->copy()->startOfMonth()->subMonths($months - 1);
-        $end = now()->copy()->endOfMonth();
-        $labels = collect(range(0, $months - 1))
-            ->mapWithKeys(fn (int $offset) => [
-                $start->copy()->addMonths($offset)->format('Y-m') => [
-                    'label' => $start->copy()->addMonths($offset)->format('M Y'),
-                    'total' => 0,
-                    'resolved' => 0,
-                    'closed' => 0,
-                ],
-            ]);
-
-        $totals = (clone $query)
-            ->whereBetween('created_at', [$start, $end])
-            ->selectRaw($this->monthExpression('created_at').' as month_key, COUNT(*) as total')
-            ->groupBy('month_key')
-            ->orderBy('month_key')
-            ->get();
-
-        $resolved = (clone $query)
-            ->whereNotNull('resolved_at')
-            ->whereBetween('resolved_at', [$start, $end])
-            ->selectRaw($this->monthExpression('resolved_at').' as month_key, COUNT(*) as total')
-            ->groupBy('month_key')
-            ->orderBy('month_key')
-            ->get();
-
-        $closed = (clone $query)
-            ->whereNotNull('closed_at')
-            ->whereBetween('closed_at', [$start, $end])
-            ->selectRaw($this->monthExpression('closed_at').' as month_key, COUNT(*) as total')
-            ->groupBy('month_key')
-            ->orderBy('month_key')
-            ->get();
-
-        foreach ($totals as $row) {
-            if ($labels->has($row->month_key)) {
-                $month = $labels->get($row->month_key);
-                $month['total'] = (int) $row->total;
-                $labels->put($row->month_key, $month);
-            }
-        }
-
-        foreach ($resolved as $row) {
-            if ($labels->has($row->month_key)) {
-                $month = $labels->get($row->month_key);
-                $month['resolved'] = (int) $row->total;
-                $labels->put($row->month_key, $month);
-            }
-        }
-
-        foreach ($closed as $row) {
-            if ($labels->has($row->month_key)) {
-                $month = $labels->get($row->month_key);
-                $month['closed'] = (int) $row->total;
-                $labels->put($row->month_key, $month);
-            }
-        }
-
-        $max = max(1, $labels->max(fn (array $row) => max($row['total'], $row['resolved'], $row['closed'])));
-
-        return [
-            'max' => $max,
-            'rows' => $labels->values()->all(),
-        ];
-    }
-
-    private function statusBreakdown(array $stats): array
-    {
-        $segments = [
-            [
-                'label' => 'Open',
-                'value' => (int) ($stats['open'] ?? 0),
-                'color' => '#4f7cac',
-            ],
-            [
-                'label' => 'Pending Assignment',
-                'value' => (int) ($stats['pending_assignment'] ?? 0),
-                'color' => '#f7941d',
-            ],
-            [
-                'label' => 'Escalated',
-                'value' => (int) ($stats['escalated'] ?? 0),
-                'color' => '#d9534f',
-            ],
-            [
-                'label' => 'Resolved',
-                'value' => (int) ($stats['resolved'] ?? 0),
-                'color' => '#73b7b0',
-            ],
-            [
-                'label' => 'Closed',
-                'value' => (int) ($stats['closed'] ?? 0),
-                'color' => '#f0ca3e',
-            ],
-        ];
-
-        $resolvedWithoutClosed = max(0, (int) ($stats['resolved'] ?? 0) - (int) ($stats['closed'] ?? 0));
-        $segments[3]['value'] = $resolvedWithoutClosed;
-
-        $total = max(1, array_sum(array_column($segments, 'value')));
-
-        return array_map(fn (array $segment) => [
-            ...$segment,
-            'percentage' => round(($segment['value'] / $total) * 100, 1),
-        ], $segments);
-    }
-
-    private function resolutionBuckets(Builder $query): array
-    {
-        $resolvedQuery = (clone $query)->whereNotNull('resolved_at');
-
-        $withinDay = (clone $resolvedQuery)
-            ->whereRaw($this->resolutionHoursExpression().' <= 24')
-            ->count();
-
-        $withinThreeDays = (clone $resolvedQuery)
-            ->whereRaw($this->resolutionHoursExpression().' > 24')
-            ->whereRaw($this->resolutionHoursExpression().' <= 72')
-            ->count();
-
-        $overThreeDays = (clone $resolvedQuery)
-            ->whereRaw($this->resolutionHoursExpression().' > 72')
-            ->count();
-
-        $rows = [
-            ['label' => 'Within 24 Hours', 'value' => $withinDay, 'color' => '#29b765'],
-            ['label' => '24 to 72 Hours', 'value' => $withinThreeDays, 'color' => '#f0ca3e'],
-            ['label' => 'Over 72 Hours', 'value' => $overThreeDays, 'color' => '#bf1f47'],
-        ];
-
-        $max = max(1, max(array_column($rows, 'value')));
-
-        return array_map(fn (array $row) => [
-            ...$row,
-            'width' => round(($row['value'] / $max) * 100, 1),
-        ], $rows);
-    }
-
-    private function topSystemsKpis(Builder $query): array
-    {
-        $rows = (clone $query)
-            ->join('support_systems', 'support_systems.id', '=', 'tickets.system_id')
-            ->select('support_systems.name', DB::raw('COUNT(*) as total'))
-            ->groupBy('support_systems.name')
-            ->orderByDesc('total')
-            ->limit(5)
-            ->get();
-
-        $max = max(1, (int) ($rows->max('total') ?? 1));
-
-        return $rows->map(fn ($row) => [
-            'label' => $row->name,
-            'value' => (int) $row->total,
-            'width' => round((((int) $row->total) / $max) * 100, 1),
-        ])->all();
-    }
-
-    private function facilityLeaders(Builder $query): array
-    {
-        $rows = (clone $query)
-            ->leftJoin('facilities', 'facilities.id', '=', 'tickets.facility_id')
-            ->select('facilities.name', DB::raw('COUNT(*) as total'))
-            ->whereNotNull('tickets.facility_id')
-            ->groupBy('facilities.name')
-            ->orderByDesc('total')
-            ->limit(5)
-            ->get();
-
-        $max = max(1, (int) ($rows->max('total') ?? 1));
-
-        return $rows->map(fn ($row) => [
-            'label' => $row->name ?? 'Unspecified',
-            'value' => (int) $row->total,
-            'width' => round((((int) $row->total) / $max) * 100, 1),
-        ])->all();
-    }
-
     private function ticketRows(Builder $query): array
     {
         return (clone $query)
@@ -535,26 +382,6 @@ class PublicDashboardController extends Controller
             'mysql' => 'AVG(TIMESTAMPDIFF(SECOND, created_at, resolved_at) / 3600)',
             'pgsql' => 'AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600)',
             default => 'AVG(TIMESTAMPDIFF(SECOND, created_at, resolved_at) / 3600)',
-        };
-    }
-
-    private function resolutionHoursExpression(): string
-    {
-        return match (DB::getDriverName()) {
-            'sqlite' => '((julianday(resolved_at) - julianday(created_at)) * 24)',
-            'mysql' => '(TIMESTAMPDIFF(SECOND, created_at, resolved_at) / 3600)',
-            'pgsql' => '(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600)',
-            default => '(TIMESTAMPDIFF(SECOND, created_at, resolved_at) / 3600)',
-        };
-    }
-
-    private function monthExpression(string $column): string
-    {
-        return match (DB::getDriverName()) {
-            'sqlite' => "strftime('%Y-%m', {$column})",
-            'mysql' => "DATE_FORMAT({$column}, '%Y-%m')",
-            'pgsql' => "to_char({$column}, 'YYYY-MM')",
-            default => "DATE_FORMAT({$column}, '%Y-%m')",
         };
     }
 }
