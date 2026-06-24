@@ -55,6 +55,11 @@
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
         }
 
+        .scheduler-border {
+            border-top: 4px solid #0d9488 !important;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+        }
+
         .stats-badge {
             display: inline-flex;
             align-items: center;

@@ -221,7 +221,7 @@
 
         <div class="row g-4">
             <div class="col-lg-6">
-                <div class="content-card bg-white p-4">
+                <div class="content-card bg-white p-4 scheduler-border">
                     <h2 class="h5">Tickets by System</h2>
                     <div class="table-responsive">
                         <table class="table table-sm">
@@ -235,7 +235,7 @@
                 </div>
             </div>
             <div class="col-lg-6">
-                <div class="content-card bg-white p-4">
+                <div class="content-card bg-white p-4 scheduler-border">
                     <h2 class="h5">Tickets by Region</h2>
                     <div class="table-responsive">
                         <table class="table table-sm">
@@ -249,7 +249,7 @@
                 </div>
             </div>
             <div class="col-lg-6">
-                <div class="content-card bg-white p-4">
+                <div class="content-card bg-white p-4 scheduler-border">
                     <h2 class="h5">Top Facilities by Ticket Volume</h2>
                     <div class="table-responsive">
                         <table class="table table-sm">
@@ -263,7 +263,7 @@
                 </div>
             </div>
             <div class="col-lg-6">
-                <div class="content-card bg-white p-4">
+                <div class="content-card bg-white p-4 scheduler-border">
                     <h2 class="h5">Most Reported Issues</h2>
                     <div class="table-responsive">
                         <table class="table table-sm">
