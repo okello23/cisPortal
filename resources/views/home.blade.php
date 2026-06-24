@@ -16,8 +16,8 @@
             position: absolute;
             inset: 0;
             background: url('/unhls33.jpg') center 38% / cover no-repeat;
-            filter: blur(5px) saturate(0.92) brightness(0.74);
-            transform: scale(1.05);
+            filter: blur(1.5px) saturate(1) brightness(0.82) contrast(1.04);
+            transform: scale(1.015);
             z-index: -2;
         }
 
@@ -26,8 +26,8 @@
             position: absolute;
             inset: 0;
             background:
-                linear-gradient(90deg, rgba(10, 28, 43, 0.82) 0%, rgba(10, 28, 43, 0.58) 44%, rgba(10, 28, 43, 0.36) 100%),
-                radial-gradient(circle at top right, rgba(255, 255, 255, 0.18), transparent 24%);
+                linear-gradient(90deg, rgba(10, 28, 43, 0.78) 0%, rgba(10, 28, 43, 0.5) 44%, rgba(10, 28, 43, 0.28) 100%),
+                radial-gradient(circle at top right, rgba(255, 255, 255, 0.14), transparent 24%);
             z-index: -1;
         }
 
@@ -58,8 +58,8 @@
 
             .home-hero::after {
                 background:
-                    linear-gradient(180deg, rgba(10, 28, 43, 0.78) 0%, rgba(10, 28, 43, 0.58) 100%),
-                    radial-gradient(circle at top right, rgba(255, 255, 255, 0.16), transparent 24%);
+                    linear-gradient(180deg, rgba(10, 28, 43, 0.74) 0%, rgba(10, 28, 43, 0.52) 100%),
+                    radial-gradient(circle at top right, rgba(255, 255, 255, 0.12), transparent 24%);
             }
 
             .home-hero .lead,
@@ -116,15 +116,16 @@
                     </div>
                     <div class="row g-3 mb-4">
                         @foreach ([
-                            'Logged Today' => $todayStats['total'],
-                            'Opened Today' => $todayStats['open'],
-                            'Resolved Today' => $todayStats['resolved'],
-                            'Facilities Today' => $todayStats['facilities'],
-                        ] as $label => $value)
+                            ['label' => 'Logged Today', 'value' => $todayStats['total'], 'badge' => 'Volume', 'class' => 'stats-badge--navy', 'accent' => '#123b5d'],
+                            ['label' => 'Opened Today', 'value' => $todayStats['open'], 'badge' => 'Active', 'class' => 'stats-badge--teal', 'accent' => '#0d9488'],
+                            ['label' => 'Resolved Today', 'value' => $todayStats['resolved'], 'badge' => 'Closed Loop', 'class' => 'stats-badge--orange', 'accent' => '#f28c28'],
+                            ['label' => 'Facilities Today', 'value' => $todayStats['facilities'], 'badge' => 'Coverage', 'class' => 'stats-badge--gold', 'accent' => '#be8c2a'],
+                        ] as $item)
                             <div class="col-6">
-                                <div class="metric-card p-3 h-100">
-                                    <div class="text-muted small">{{ $label }}</div>
-                                    <div class="fs-2 fw-bold">{{ $value }}</div>
+                                <div class="metric-card metric-card-accent p-3 h-100" style="--metric-accent: {{ $item['accent'] }};">
+                                    <span class="stats-badge {{ $item['class'] }} mb-2">{{ $item['badge'] }}</span>
+                                    <div class="text-muted small">{{ $item['label'] }}</div>
+                                    <div class="fs-2 fw-bold">{{ $item['value'] }}</div>
                                 </div>
                             </div>
                         @endforeach
@@ -133,17 +134,18 @@
                     <div class="hero-stats-group-title mb-3">All-Time Overview</div>
                     <div class="row g-3">
                         @foreach ([
-                            'Total Tickets' => $overviewStats['total'] ?? 0,
-                            'Open Tickets' => $overviewStats['open'] ?? 0,
-                            'This Month' => $overviewStats['this_month'] ?? 0,
-                            'Avg Hours' => $overviewStats['average_resolution_hours'] ?? 0,
-                            'Facilities' => $overviewStats['facilities'] ?? 0,
-                            'Systems' => $overviewStats['systems'] ?? 0,
-                        ] as $label => $value)
+                            ['label' => 'Total Tickets', 'value' => $overviewStats['total'] ?? 0, 'badge' => 'All Cases', 'class' => 'stats-badge--navy', 'accent' => '#123b5d'],
+                            ['label' => 'Open Tickets', 'value' => $overviewStats['open'] ?? 0, 'badge' => 'Backlog', 'class' => 'stats-badge--teal', 'accent' => '#0d9488'],
+                            ['label' => 'This Month', 'value' => $overviewStats['this_month'] ?? 0, 'badge' => 'Monthly', 'class' => 'stats-badge--orange', 'accent' => '#f28c28'],
+                            ['label' => 'Avg Hours', 'value' => $overviewStats['average_resolution_hours'] ?? 0, 'badge' => 'SLA Pace', 'class' => 'stats-badge--plum', 'accent' => '#7b3f6c'],
+                            ['label' => 'Facilities', 'value' => $overviewStats['facilities'] ?? 0, 'badge' => 'Reach', 'class' => 'stats-badge--gold', 'accent' => '#be8c2a'],
+                            ['label' => 'Systems', 'value' => $overviewStats['systems'] ?? 0, 'badge' => 'Platforms', 'class' => 'stats-badge--slate', 'accent' => '#52606d'],
+                        ] as $item)
                             <div class="col-6">
-                                <div class="metric-card p-3 h-100">
-                                    <div class="text-muted small">{{ $label }}</div>
-                                    <div class="fs-4 fw-bold">{{ $value }}</div>
+                                <div class="metric-card metric-card-accent p-3 h-100" style="--metric-accent: {{ $item['accent'] }};">
+                                    <span class="stats-badge {{ $item['class'] }} mb-2">{{ $item['badge'] }}</span>
+                                    <div class="text-muted small">{{ $item['label'] }}</div>
+                                    <div class="fs-4 fw-bold">{{ $item['value'] }}</div>
                                 </div>
                             </div>
                         @endforeach

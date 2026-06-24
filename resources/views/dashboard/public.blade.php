@@ -15,8 +15,8 @@
             position: absolute;
             inset: 0;
             background: url('/unhls33.jpg') center 38% / cover no-repeat;
-            filter: blur(6px) saturate(0.9) brightness(1.08);
-            transform: scale(1.04);
+            filter: blur(2px) saturate(0.96) brightness(1.04) contrast(1.02);
+            transform: scale(1.02);
             z-index: -2;
         }
 
@@ -87,21 +87,22 @@
                     <h2 class="h4 mb-1">Today's Snapshot</h2>
                     <p class="text-muted mb-0">{{ $selectedDate }}</p>
                 </div>
-                <span class="badge rounded-pill text-bg-light px-3 py-2">Daily Stats</span>
+                <span class="stats-badge stats-badge--teal">Daily Stats</span>
             </div>
 
             <div class="row g-3">
                 @foreach ([
-                    'Tickets Logged Today' => $todayStats['total'],
-                    'Opened Today' => $todayStats['open'],
-                    'Resolved Today' => $todayStats['resolved'],
-                    'Closed Today' => $todayStats['closed'],
-                    'Facilities Reporting Today' => $todayStats['facilities'],
-                ] as $label => $value)
+                    ['label' => 'Tickets Logged Today', 'value' => $todayStats['total'], 'badge' => 'Volume', 'class' => 'stats-badge--navy', 'accent' => '#123b5d'],
+                    ['label' => 'Opened Today', 'value' => $todayStats['open'], 'badge' => 'In Progress', 'class' => 'stats-badge--teal', 'accent' => '#0d9488'],
+                    ['label' => 'Resolved Today', 'value' => $todayStats['resolved'], 'badge' => 'Resolved', 'class' => 'stats-badge--orange', 'accent' => '#f28c28'],
+                    ['label' => 'Closed Today', 'value' => $todayStats['closed'], 'badge' => 'Completed', 'class' => 'stats-badge--plum', 'accent' => '#7b3f6c'],
+                    ['label' => 'Facilities Reporting Today', 'value' => $todayStats['facilities'], 'badge' => 'Coverage', 'class' => 'stats-badge--gold', 'accent' => '#be8c2a'],
+                ] as $item)
                     <div class="col-md-6 col-xl">
-                        <div class="metric-card p-3 h-100">
-                            <div class="text-muted small">{{ $label }}</div>
-                            <div class="fs-3 fw-bold">{{ $value }}</div>
+                        <div class="metric-card metric-card-accent p-3 h-100" style="--metric-accent: {{ $item['accent'] }};">
+                            <span class="stats-badge {{ $item['class'] }} mb-2">{{ $item['badge'] }}</span>
+                            <div class="text-muted small">{{ $item['label'] }}</div>
+                            <div class="fs-3 fw-bold">{{ $item['value'] }}</div>
                         </div>
                     </div>
                 @endforeach
@@ -181,7 +182,34 @@
                         data-bs-target="#metricModal-{{ $card['key'] }}"
                         title="{{ $card['hover_text'] }}"
                     >
-                        <div class="metric-card p-3 h-100">
+                        <div
+                            class="metric-card metric-card-accent p-3 h-100"
+                            style="--metric-accent: {{ match($card['key']) {
+                                'total_tickets' => '#123b5d',
+                                'open_tickets' => '#0d9488',
+                                'resolved_tickets' => '#f28c28',
+                                'closed_tickets' => '#7b3f6c',
+                                'average_resolution_hours' => '#52606d',
+                                default => '#be8c2a',
+                            } }};"
+                        >
+                            <span class="stats-badge {{ match($card['key']) {
+                                'total_tickets' => 'stats-badge--navy',
+                                'open_tickets' => 'stats-badge--teal',
+                                'resolved_tickets' => 'stats-badge--orange',
+                                'closed_tickets' => 'stats-badge--plum',
+                                'average_resolution_hours' => 'stats-badge--slate',
+                                default => 'stats-badge--gold',
+                            } }} mb-2">
+                                {{ match($card['key']) {
+                                    'total_tickets' => 'All Cases',
+                                    'open_tickets' => 'Backlog',
+                                    'resolved_tickets' => 'Turnaround',
+                                    'closed_tickets' => 'Completed',
+                                    'average_resolution_hours' => 'SLA Pace',
+                                    default => 'Coverage',
+                                } }}
+                            </span>
                             <div class="text-muted small">{{ $card['label'] }}</div>
                             <div class="fs-3 fw-bold">{{ $card['value'] }}</div>
                             <div class="metric-card-hint mt-2">Click for more details</div>
