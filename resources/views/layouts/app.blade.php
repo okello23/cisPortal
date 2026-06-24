@@ -62,10 +62,11 @@
             padding: 0.38rem 0.72rem;
             border-radius: 999px;
             font-size: 0.72rem;
-            font-weight: 700;
+            font-weight: 800;
             letter-spacing: 0.04em;
             text-transform: uppercase;
             border: 1px solid transparent;
+            color: #111;
         }
 
         .stats-badge::before {
@@ -73,44 +74,44 @@
             width: 0.45rem;
             height: 0.45rem;
             border-radius: 999px;
-            background: currentColor;
+            background: var(--badge-dot, currentColor);
             opacity: 0.85;
         }
 
         .stats-badge--navy {
             background: rgba(18, 59, 93, 0.12);
             border-color: rgba(18, 59, 93, 0.16);
-            color: #123b5d;
+            --badge-dot: #123b5d;
         }
 
         .stats-badge--teal {
             background: rgba(13, 148, 136, 0.14);
             border-color: rgba(13, 148, 136, 0.2);
-            color: #0d7f75;
+            --badge-dot: #0d7f75;
         }
 
         .stats-badge--orange {
             background: rgba(242, 140, 40, 0.16);
             border-color: rgba(242, 140, 40, 0.22);
-            color: #c86f16;
+            --badge-dot: #c86f16;
         }
 
         .stats-badge--gold {
             background: rgba(190, 140, 42, 0.16);
             border-color: rgba(190, 140, 42, 0.22);
-            color: #9b6d12;
+            --badge-dot: #9b6d12;
         }
 
         .stats-badge--slate {
             background: rgba(82, 96, 109, 0.14);
             border-color: rgba(82, 96, 109, 0.2);
-            color: #52606d;
+            --badge-dot: #52606d;
         }
 
         .stats-badge--plum {
             background: rgba(123, 63, 108, 0.14);
             border-color: rgba(123, 63, 108, 0.2);
-            color: #7b3f6c;
+            --badge-dot: #7b3f6c;
         }
 
         .table thead th {
