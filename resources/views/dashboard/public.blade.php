@@ -143,14 +143,6 @@
         .stat-icon-box--gold { background: #ea8a1f; }
         .stat-icon-box--rose { background: #bf1f47; }
 
-        .dashboard-section-label {
-            color: #0f4c8a;
-            font-size: 0.95rem;
-            font-weight: 800;
-            line-height: 1.25;
-            margin-bottom: 0.35rem;
-        }
-
         @media (max-width: 991.98px) {
             .public-dashboard-shell {
                 border-radius: 1.5rem;
@@ -174,7 +166,7 @@
         <div class="content-card bg-white p-4 mb-4">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                 <div>
-                    <div class="dashboard-section-label">Daily Ticket Statistics as @ {{ $dashboardAsAt }}</div>
+                    <h2 class="h4 mb-1">Today's Snapshot</h2>
                     <p class="text-muted mb-0">{{ $selectedDate }}</p>
                 </div>
                 <span class="stats-badge stats-badge--teal">Daily Stats</span>
@@ -237,7 +229,7 @@
         <div class="content-card bg-white p-4 mb-4">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                 <div>
-                    <div class="dashboard-section-label">Ticket Filter Controls as @ {{ $dashboardAsAt }}</div>
+                    <h2 class="h4 mb-1">Filterable Performance View</h2>
                     <p class="text-muted mb-0">Review ticket activity by date range, facility kind, individual facility, and system.</p>
                     <div class="filter-note mt-1">Current range: {{ $filteredDateLabel }}</div>
                 </div>
@@ -300,7 +292,7 @@
         <div class="content-card bg-white p-4 mb-4">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                 <div>
-                    <div class="dashboard-section-label">Ticket Performance Statistics as @ {{ $dashboardAsAt }}</div>
+                    <h2 class="h4 mb-1">Overall Performance</h2>
                     <p class="text-muted mb-0">Tap any statistic to open the detailed breakdown.</p>
                 </div>
                 <span class="stats-badge stats-badge--navy">All-Time Stats</span>
@@ -376,7 +368,7 @@
         <div class="row g-4">
             <div class="col-lg-6">
                 <div class="content-card bg-white p-4 scheduler-border">
-                    <div class="dashboard-section-label">Tickets by System as @ {{ $dashboardAsAt }}</div>
+                    <h2 class="h5">Tickets by System</h2>
                     <div class="table-responsive">
                         <table class="table table-sm">
                             @forelse ($bySystem as $row)
@@ -390,7 +382,7 @@
             </div>
             <div class="col-lg-6">
                 <div class="content-card bg-white p-4 scheduler-border">
-                    <div class="dashboard-section-label">Tickets by Region as @ {{ $dashboardAsAt }}</div>
+                    <h2 class="h5">Tickets by Region</h2>
                     <div class="table-responsive">
                         <table class="table table-sm">
                             @forelse ($byRegion as $row)
@@ -404,7 +396,7 @@
             </div>
             <div class="col-lg-6">
                 <div class="content-card bg-white p-4 scheduler-border">
-                    <div class="dashboard-section-label">Top Facilities by Ticket Volume as @ {{ $dashboardAsAt }}</div>
+                    <h2 class="h5">Top Facilities by Ticket Volume</h2>
                     <div class="table-responsive">
                         <table class="table table-sm">
                             @forelse ($byFacility as $row)
@@ -418,7 +410,7 @@
             </div>
             <div class="col-lg-6">
                 <div class="content-card bg-white p-4 scheduler-border">
-                    <div class="dashboard-section-label">Most Reported Issues as @ {{ $dashboardAsAt }}</div>
+                    <h2 class="h5">Most Reported Issues</h2>
                     <div class="table-responsive">
                         <table class="table table-sm">
                             @forelse ($commonIssues as $row)
@@ -432,7 +424,7 @@
             </div>
             <div class="col-12">
                 <div class="content-card bg-white p-4">
-                    <div class="dashboard-section-label">Repeat Issues as @ {{ $dashboardAsAt }}</div>
+                    <h2 class="h5">Repeat Issues</h2>
                     <div class="table-responsive">
                         <table class="table">
                             <thead><tr><th>Facility</th><th>Issue</th><th class="text-end">Occurrences</th></tr></thead>
