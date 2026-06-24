@@ -44,6 +44,7 @@ class PublicDashboardController extends Controller
                 ->distinct()
                 ->pluck('facility_type'),
             'selectedDate' => now()->format('l, d F Y'),
+            'dashboardAsAt' => now()->format('D-d-M-Y'),
             'filteredDateLabel' => $this->selectedDateLabel($request),
             'metricCards' => $metricCards,
             'monthlyTrend' => $this->monthlyTrend(clone $filteredQuery),
