@@ -68,6 +68,81 @@
             color: #5c6c7b;
         }
 
+        .stats-strip {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.25rem 1.5rem;
+            padding: 1rem 0 0.25rem;
+        }
+
+        .stats-strip-button {
+            border: 0;
+            background: transparent;
+            padding: 0;
+            width: 100%;
+            text-align: left;
+        }
+
+        .stats-strip-button:focus-visible {
+            outline: 0;
+        }
+
+        .stats-strip-button:focus-visible .stat-tile,
+        .stats-strip-button:hover .stat-tile {
+            transform: translateY(-2px);
+        }
+
+        .stat-tile {
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+            min-height: 4.75rem;
+            transition: transform 0.18s ease;
+        }
+
+        .stat-icon-box {
+            width: 3rem;
+            height: 3rem;
+            border-radius: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            flex: 0 0 auto;
+        }
+
+        .stat-copy {
+            min-width: 0;
+        }
+
+        .stat-value {
+            color: #123b5d;
+            font-size: 1.9rem;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            color: #0f4c8a;
+            font-size: 0.88rem;
+            font-weight: 500;
+            line-height: 1.35;
+        }
+
+        .stat-icon-box svg {
+            width: 1.55rem;
+            height: 1.55rem;
+            stroke: currentColor;
+        }
+
+        .stat-icon-box--navy { background: #118ab2; }
+        .stat-icon-box--teal { background: #29b765; }
+        .stat-icon-box--orange { background: #f08a24; }
+        .stat-icon-box--plum { background: #b31e49; }
+        .stat-icon-box--gold { background: #ea8a1f; }
+        .stat-icon-box--rose { background: #bf1f47; }
+
         @media (max-width: 991.98px) {
             .public-dashboard-shell {
                 border-radius: 1.5rem;
@@ -76,6 +151,11 @@
 
             .public-dashboard-shell::before {
                 background-position: center center;
+            }
+
+            .stats-strip {
+                grid-template-columns: 1fr;
+                gap: 1rem;
             }
         }
     </style>
@@ -90,19 +170,54 @@
                 <span class="stats-badge stats-badge--teal">Daily Stats</span>
             </div>
 
-            <div class="row g-3">
+            <div class="stats-strip">
                 @foreach ([
-                    ['label' => 'Tickets Logged Today', 'value' => $todayStats['total'], 'badge' => 'Volume', 'class' => 'stats-badge--navy', 'accent' => '#123b5d'],
-                    ['label' => 'Opened Today', 'value' => $todayStats['open'], 'badge' => 'In Progress', 'class' => 'stats-badge--teal', 'accent' => '#0d9488'],
-                    ['label' => 'Resolved Today', 'value' => $todayStats['resolved'], 'badge' => 'Resolved', 'class' => 'stats-badge--orange', 'accent' => '#f28c28'],
-                    ['label' => 'Closed Today', 'value' => $todayStats['closed'], 'badge' => 'Completed', 'class' => 'stats-badge--plum', 'accent' => '#7b3f6c'],
-                    ['label' => 'Facilities Reporting Today', 'value' => $todayStats['facilities'], 'badge' => 'Coverage', 'class' => 'stats-badge--gold', 'accent' => '#be8c2a'],
+                    ['label' => 'Tickets Logged Today', 'value' => $todayStats['total'], 'icon_color' => 'navy', 'icon' => 'clipboard'],
+                    ['label' => 'Opened Today', 'value' => $todayStats['open'], 'icon_color' => 'teal', 'icon' => 'check-circle'],
+                    ['label' => 'Resolved Today', 'value' => $todayStats['resolved'], 'icon_color' => 'orange', 'icon' => 'pause-bars'],
+                    ['label' => 'Closed Today', 'value' => $todayStats['closed'], 'icon_color' => 'plum', 'icon' => 'trash'],
+                    ['label' => 'Facilities Reporting Today', 'value' => $todayStats['facilities'], 'icon_color' => 'gold', 'icon' => 'spinner-dots'],
                 ] as $item)
-                    <div class="col-md-6 col-xl">
-                        <div class="metric-card metric-card-accent p-3 h-100" style="--metric-accent: {{ $item['accent'] }};">
-                            <span class="stats-badge {{ $item['class'] }} mb-2">{{ $item['badge'] }}</span>
-                            <div class="text-muted small">{{ $item['label'] }}</div>
-                            <div class="fs-3 fw-bold">{{ $item['value'] }}</div>
+                    <div class="stat-tile">
+                        <div class="stat-icon-box stat-icon-box--{{ $item['icon_color'] }}" aria-hidden="true">
+                            @if ($item['icon'] === 'clipboard')
+                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                    <path d="M9 3h6" />
+                                    <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+                                    <path d="M9 3a1 1 0 0 0-1 1v2h8V4a1 1 0 0 0-1-1Z" />
+                                    <path d="M9 11h6M9 15h6" />
+                                </svg>
+                            @elseif ($item['icon'] === 'check-circle')
+                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2">
+                                    <circle cx="12" cy="12" r="9" />
+                                    <path d="m8.5 12.5 2.4 2.4 4.8-5.3" />
+                                </svg>
+                            @elseif ($item['icon'] === 'pause-bars')
+                                <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                                    <rect x="6" y="4" width="4" height="16" rx="1" />
+                                    <rect x="14" y="4" width="4" height="16" rx="1" />
+                                </svg>
+                            @elseif ($item['icon'] === 'trash')
+                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                    <path d="M4 7h16" />
+                                    <path d="M9 3h6" />
+                                    <path d="M7 7l1 13h8l1-13" />
+                                    <path d="M10 11v6M14 11v6" />
+                                </svg>
+                            @elseif ($item['icon'] === 'spinner-dots')
+                                <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                                    <circle cx="12" cy="4" r="2" />
+                                    <circle cx="18.5" cy="7.5" r="1.7" opacity="0.85" />
+                                    <circle cx="20" cy="14" r="1.5" opacity="0.7" />
+                                    <circle cx="16.5" cy="19.5" r="1.4" opacity="0.55" />
+                                    <circle cx="9.5" cy="20" r="1.3" opacity="0.45" />
+                                    <circle cx="5" cy="15.5" r="1.2" opacity="0.35" />
+                                </svg>
+                            @endif
+                        </div>
+                        <div class="stat-copy">
+                            <div class="stat-value">{{ $item['value'] }}</div>
+                            <div class="stat-label">{{ $item['label'] }}</div>
                         </div>
                     </div>
                 @endforeach
@@ -172,51 +287,80 @@
             </form>
         </div>
 
-        <div class="row g-3 mb-4">
-            @foreach ($metricCards as $card)
-                <div class="col-md-4 col-xl">
-                    <button
-                        type="button"
-                        class="metric-card-button"
-                        data-bs-toggle="modal"
-                        data-bs-target="#metricModal-{{ $card['key'] }}"
-                        title="{{ $card['hover_text'] }}"
-                    >
-                        <div
-                            class="metric-card metric-card-accent p-3 h-100"
-                            style="--metric-accent: {{ match($card['key']) {
-                                'total_tickets' => '#123b5d',
-                                'open_tickets' => '#0d9488',
-                                'resolved_tickets' => '#f28c28',
-                                'closed_tickets' => '#7b3f6c',
-                                'average_resolution_hours' => '#52606d',
-                                default => '#be8c2a',
-                            } }};"
-                        >
-                            <span class="stats-badge {{ match($card['key']) {
-                                'total_tickets' => 'stats-badge--navy',
-                                'open_tickets' => 'stats-badge--teal',
-                                'resolved_tickets' => 'stats-badge--orange',
-                                'closed_tickets' => 'stats-badge--plum',
-                                'average_resolution_hours' => 'stats-badge--slate',
-                                default => 'stats-badge--gold',
-                            } }} mb-2">
-                                {{ match($card['key']) {
-                                    'total_tickets' => 'All Cases',
-                                    'open_tickets' => 'Backlog',
-                                    'resolved_tickets' => 'Turnaround',
-                                    'closed_tickets' => 'Completed',
-                                    'average_resolution_hours' => 'SLA Pace',
-                                    default => 'Coverage',
-                                } }}
-                            </span>
-                            <div class="text-muted small">{{ $card['label'] }}</div>
-                            <div class="fs-3 fw-bold">{{ $card['value'] }}</div>
-                            <div class="metric-card-hint mt-2">Click for more details</div>
-                        </div>
-                    </button>
+        <div class="content-card bg-white p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <div>
+                    <h2 class="h4 mb-1">Overall Performance</h2>
+                    <p class="text-muted mb-0">Tap any statistic to open the detailed breakdown.</p>
                 </div>
+                <span class="stats-badge stats-badge--navy">All-Time Stats</span>
+            </div>
+
+            <div class="stats-strip">
+            @foreach ($metricCards as $card)
+                <button
+                    type="button"
+                    class="stats-strip-button"
+                    data-bs-toggle="modal"
+                    data-bs-target="#metricModal-{{ $card['key'] }}"
+                    title="{{ $card['hover_text'] }}"
+                >
+                    <div class="stat-tile">
+                        <div class="stat-icon-box stat-icon-box--{{ match($card['key']) {
+                            'total_tickets' => 'navy',
+                            'open_tickets' => 'teal',
+                            'resolved_tickets' => 'orange',
+                            'closed_tickets' => 'plum',
+                            'average_resolution_hours' => 'gold',
+                            default => 'rose',
+                        } }}" aria-hidden="true">
+                            @if ($card['key'] === 'total_tickets')
+                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                    <path d="M9 3h6" />
+                                    <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+                                    <path d="M9 3a1 1 0 0 0-1 1v2h8V4a1 1 0 0 0-1-1Z" />
+                                    <path d="M9 11h6M9 15h6" />
+                                </svg>
+                            @elseif ($card['key'] === 'open_tickets')
+                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2">
+                                    <circle cx="12" cy="12" r="9" />
+                                    <path d="m8.5 12.5 2.4 2.4 4.8-5.3" />
+                                </svg>
+                            @elseif ($card['key'] === 'resolved_tickets')
+                                <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                                    <rect x="6" y="4" width="4" height="16" rx="1" />
+                                    <rect x="14" y="4" width="4" height="16" rx="1" />
+                                </svg>
+                            @elseif ($card['key'] === 'closed_tickets')
+                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                    <path d="M7 7l10 10M17 7 7 17" />
+                                    <circle cx="12" cy="12" r="9" />
+                                </svg>
+                            @elseif ($card['key'] === 'average_resolution_hours')
+                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                                    <circle cx="12" cy="12" r="9" />
+                                    <path d="M12 7v5l3 2" />
+                                </svg>
+                            @else
+                                <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                                    <circle cx="12" cy="4" r="2" />
+                                    <circle cx="18.5" cy="7.5" r="1.7" opacity="0.85" />
+                                    <circle cx="20" cy="14" r="1.5" opacity="0.7" />
+                                    <circle cx="16.5" cy="19.5" r="1.4" opacity="0.55" />
+                                    <circle cx="9.5" cy="20" r="1.3" opacity="0.45" />
+                                    <circle cx="5" cy="15.5" r="1.2" opacity="0.35" />
+                                </svg>
+                            @endif
+                        </div>
+                        <div class="stat-copy">
+                            <div class="stat-value">{{ $card['value'] }}</div>
+                            <div class="stat-label">{{ $card['label'] }}</div>
+                            <div class="metric-card-hint mt-1">Click for more details</div>
+                        </div>
+                    </div>
+                </button>
             @endforeach
+            </div>
         </div>
 
         <div class="row g-4">
