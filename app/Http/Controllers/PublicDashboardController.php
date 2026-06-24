@@ -32,6 +32,7 @@ class PublicDashboardController extends Controller
         return view('dashboard.public', [
             'todayStats' => $todayStats,
             'stats' => $stats,
+            'insightCards' => $this->insightCards($stats),
             'periodOptions' => $this->periodOptions(),
             'systems' => SupportSystem::query()->where('active', true)->orderBy('name')->get(),
             'facilities' => Facility::query()->where('active', true)->orderBy('name')->get(),
@@ -45,6 +46,11 @@ class PublicDashboardController extends Controller
             'selectedDate' => now()->format('l, d F Y'),
             'filteredDateLabel' => $this->selectedDateLabel($request),
             'metricCards' => $metricCards,
+            'monthlyTrend' => $this->monthlyTrend(clone $filteredQuery),
+            'statusBreakdown' => $this->statusBreakdown($stats),
+            'resolutionBuckets' => $this->resolutionBuckets(clone $filteredQuery),
+            'topSystemsKpis' => $this->topSystemsKpis(clone $filteredQuery),
+            'facilityLeaders' => $this->facilityLeaders(clone $filteredQuery),
             'bySystem' => (clone $filteredQuery)
                 ->select('support_systems.name', DB::raw('count(*) as total'))
                 ->join('support_systems', 'support_systems.id', '=', 'tickets.system_id')
@@ -318,6 +324,222 @@ class PublicDashboardController extends Controller
         ];
     }
 
+    private function insightCards(array $stats): array
+    {
+        return [
+            [
+                'label' => 'Tickets in Scope',
+                'value' => $stats['total'] ?? 0,
+                'tone' => 'gold',
+                'icon' => 'alert',
+            ],
+            [
+                'label' => 'Open Right Now',
+                'value' => $stats['open'] ?? 0,
+                'tone' => 'teal',
+                'icon' => 'stack',
+            ],
+            [
+                'label' => 'Pending Assignment',
+                'value' => $stats['pending_assignment'] ?? 0,
+                'tone' => 'orange',
+                'icon' => 'pause',
+            ],
+            [
+                'label' => 'Avg Resolution Hours',
+                'value' => $stats['average_resolution_hours'] ?? 0,
+                'tone' => 'navy',
+                'icon' => 'clock',
+            ],
+            [
+                'label' => 'Escalated to Devs',
+                'value' => $stats['escalated'] ?? 0,
+                'tone' => 'plum',
+                'icon' => 'flag',
+            ],
+            [
+                'label' => 'Facilities Reporting',
+                'value' => $stats['facilities_reporting'] ?? 0,
+                'tone' => 'sage',
+                'icon' => 'facility',
+            ],
+        ];
+    }
+
+    private function monthlyTrend(Builder $query, int $months = 6): array
+    {
+        $start = now()->copy()->startOfMonth()->subMonths($months - 1);
+        $end = now()->copy()->endOfMonth();
+        $labels = collect(range(0, $months - 1))
+            ->mapWithKeys(fn (int $offset) => [
+                $start->copy()->addMonths($offset)->format('Y-m') => [
+                    'label' => $start->copy()->addMonths($offset)->format('M Y'),
+                    'total' => 0,
+                    'resolved' => 0,
+                    'closed' => 0,
+                ],
+            ]);
+
+        $totals = (clone $query)
+            ->whereBetween('created_at', [$start, $end])
+            ->selectRaw($this->monthExpression('created_at').' as month_key, COUNT(*) as total')
+            ->groupBy('month_key')
+            ->orderBy('month_key')
+            ->get();
+
+        $resolved = (clone $query)
+            ->whereNotNull('resolved_at')
+            ->whereBetween('resolved_at', [$start, $end])
+            ->selectRaw($this->monthExpression('resolved_at').' as month_key, COUNT(*) as total')
+            ->groupBy('month_key')
+            ->orderBy('month_key')
+            ->get();
+
+        $closed = (clone $query)
+            ->whereNotNull('closed_at')
+            ->whereBetween('closed_at', [$start, $end])
+            ->selectRaw($this->monthExpression('closed_at').' as month_key, COUNT(*) as total')
+            ->groupBy('month_key')
+            ->orderBy('month_key')
+            ->get();
+
+        foreach ($totals as $row) {
+            if ($labels->has($row->month_key)) {
+                $labels[$row->month_key]['total'] = (int) $row->total;
+            }
+        }
+
+        foreach ($resolved as $row) {
+            if ($labels->has($row->month_key)) {
+                $labels[$row->month_key]['resolved'] = (int) $row->total;
+            }
+        }
+
+        foreach ($closed as $row) {
+            if ($labels->has($row->month_key)) {
+                $labels[$row->month_key]['closed'] = (int) $row->total;
+            }
+        }
+
+        $max = max(1, $labels->max(fn (array $row) => max($row['total'], $row['resolved'], $row['closed'])));
+
+        return [
+            'max' => $max,
+            'rows' => $labels->values()->all(),
+        ];
+    }
+
+    private function statusBreakdown(array $stats): array
+    {
+        $segments = [
+            [
+                'label' => 'Open',
+                'value' => (int) ($stats['open'] ?? 0),
+                'color' => '#4f7cac',
+            ],
+            [
+                'label' => 'Pending Assignment',
+                'value' => (int) ($stats['pending_assignment'] ?? 0),
+                'color' => '#f7941d',
+            ],
+            [
+                'label' => 'Escalated',
+                'value' => (int) ($stats['escalated'] ?? 0),
+                'color' => '#d9534f',
+            ],
+            [
+                'label' => 'Resolved',
+                'value' => (int) ($stats['resolved'] ?? 0),
+                'color' => '#73b7b0',
+            ],
+            [
+                'label' => 'Closed',
+                'value' => (int) ($stats['closed'] ?? 0),
+                'color' => '#f0ca3e',
+            ],
+        ];
+
+        $resolvedWithoutClosed = max(0, (int) ($stats['resolved'] ?? 0) - (int) ($stats['closed'] ?? 0));
+        $segments[3]['value'] = $resolvedWithoutClosed;
+
+        $total = max(1, array_sum(array_column($segments, 'value')));
+
+        return array_map(fn (array $segment) => [
+            ...$segment,
+            'percentage' => round(($segment['value'] / $total) * 100, 1),
+        ], $segments);
+    }
+
+    private function resolutionBuckets(Builder $query): array
+    {
+        $resolvedQuery = (clone $query)->whereNotNull('resolved_at');
+
+        $withinDay = (clone $resolvedQuery)
+            ->whereRaw($this->resolutionHoursExpression().' <= 24')
+            ->count();
+
+        $withinThreeDays = (clone $resolvedQuery)
+            ->whereRaw($this->resolutionHoursExpression().' > 24')
+            ->whereRaw($this->resolutionHoursExpression().' <= 72')
+            ->count();
+
+        $overThreeDays = (clone $resolvedQuery)
+            ->whereRaw($this->resolutionHoursExpression().' > 72')
+            ->count();
+
+        $rows = [
+            ['label' => 'Within 24 Hours', 'value' => $withinDay, 'color' => '#29b765'],
+            ['label' => '24 to 72 Hours', 'value' => $withinThreeDays, 'color' => '#f0ca3e'],
+            ['label' => 'Over 72 Hours', 'value' => $overThreeDays, 'color' => '#bf1f47'],
+        ];
+
+        $max = max(1, max(array_column($rows, 'value')));
+
+        return array_map(fn (array $row) => [
+            ...$row,
+            'width' => round(($row['value'] / $max) * 100, 1),
+        ], $rows);
+    }
+
+    private function topSystemsKpis(Builder $query): array
+    {
+        $rows = (clone $query)
+            ->join('support_systems', 'support_systems.id', '=', 'tickets.system_id')
+            ->select('support_systems.name', DB::raw('COUNT(*) as total'))
+            ->groupBy('support_systems.name')
+            ->orderByDesc('total')
+            ->limit(5)
+            ->get();
+
+        $max = max(1, (int) ($rows->max('total') ?? 1));
+
+        return $rows->map(fn ($row) => [
+            'label' => $row->name,
+            'value' => (int) $row->total,
+            'width' => round((((int) $row->total) / $max) * 100, 1),
+        ])->all();
+    }
+
+    private function facilityLeaders(Builder $query): array
+    {
+        $rows = (clone $query)
+            ->leftJoin('facilities', 'facilities.id', '=', 'tickets.facility_id')
+            ->select('facilities.name', DB::raw('COUNT(*) as total'))
+            ->whereNotNull('tickets.facility_id')
+            ->groupBy('facilities.name')
+            ->orderByDesc('total')
+            ->limit(5)
+            ->get();
+
+        $max = max(1, (int) ($rows->max('total') ?? 1));
+
+        return $rows->map(fn ($row) => [
+            'label' => $row->name ?? 'Unspecified',
+            'value' => (int) $row->total,
+            'width' => round((((int) $row->total) / $max) * 100, 1),
+        ])->all();
+    }
+
     private function ticketRows(Builder $query): array
     {
         return (clone $query)
@@ -369,6 +591,26 @@ class PublicDashboardController extends Controller
             'mysql' => 'AVG(TIMESTAMPDIFF(SECOND, created_at, resolved_at) / 3600)',
             'pgsql' => 'AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600)',
             default => 'AVG(TIMESTAMPDIFF(SECOND, created_at, resolved_at) / 3600)',
+        };
+    }
+
+    private function resolutionHoursExpression(): string
+    {
+        return match (DB::getDriverName()) {
+            'sqlite' => '((julianday(resolved_at) - julianday(created_at)) * 24)',
+            'mysql' => '(TIMESTAMPDIFF(SECOND, created_at, resolved_at) / 3600)',
+            'pgsql' => '(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600)',
+            default => '(TIMESTAMPDIFF(SECOND, created_at, resolved_at) / 3600)',
+        };
+    }
+
+    private function monthExpression(string $column): string
+    {
+        return match (DB::getDriverName()) {
+            'sqlite' => "strftime('%Y-%m', {$column})",
+            'mysql' => "DATE_FORMAT({$column}, '%Y-%m')",
+            'pgsql' => "to_char({$column}, 'YYYY-MM')",
+            default => "DATE_FORMAT({$column}, '%Y-%m')",
         };
     }
 }

@@ -1,6 +1,6 @@
 @extends('layouts.app', ['title' => 'Public Dashboard'])
 
-@section('content')
+@push('styles')
     <style>
         .public-dashboard-shell {
             position: relative;
@@ -159,7 +159,9 @@
             }
         }
     </style>
+@endpush
 
+@section('content')
     <div class="public-dashboard-shell">
         <div class="content-card bg-white p-4 mb-4">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">

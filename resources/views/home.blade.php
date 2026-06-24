@@ -1,6 +1,6 @@
 @extends('layouts.app', ['title' => 'CPHL ICT Support Portal'])
 
-@section('content')
+@push('styles')
     <style>
         .home-hero {
             position: relative;
@@ -96,7 +96,9 @@
             }
         }
     </style>
+@endpush
 
+@section('content')
     <section class="hero-panel home-hero p-4 p-lg-5 mb-4">
         <div class="row g-4 align-items-center">
             <div class="col-lg-7">

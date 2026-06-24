@@ -139,6 +139,7 @@
             color: #fff !important;
         }
     </style>
+    @stack('styles')
 </head>
 <body>
     <nav class="navbar navbar-expand-lg py-3">
