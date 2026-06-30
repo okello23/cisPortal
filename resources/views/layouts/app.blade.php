@@ -150,7 +150,6 @@
             </button>
             <div class="collapse navbar-collapse" id="mainNav">
                 <div class="ms-auto d-flex gap-2 align-items-center">
-                    <a class="btn btn-outline-dark rounded-pill px-4" href="{{ route('tickets.create', [], false) }}">Report Issue</a>
                     @if (request()->routeIs('dashboard.public'))
                         <a class="btn btn-cis-orange rounded-pill px-4" href="{{ route('tickets.create', [], false) }}">Log New Issue</a>
                     @endif
