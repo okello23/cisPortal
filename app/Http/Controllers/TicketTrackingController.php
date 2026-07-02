@@ -21,7 +21,7 @@ class TicketTrackingController extends Controller
         ]);
 
         $ticket = Ticket::query()
-            ->with(['status', 'assignedStaff', 'statusLogs.newStatus'])
+            ->with(['status', 'assignedStaff', 'designation', 'statusLogs.newStatus', 'feedback'])
             ->where('ticket_number', $validated['ticket_number'])
             ->where(function ($query) use ($validated) {
                 $query->where('email', $validated['contact'])

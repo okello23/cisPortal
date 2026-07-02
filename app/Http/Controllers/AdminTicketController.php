@@ -8,13 +8,16 @@ use App\Mail\TicketStatusUpdatedMail;
 use App\Mail\TicketWorkAssignmentMail;
 use App\Models\ClosureReason;
 use App\Models\ResolutionCategory;
+use App\Models\AuditLog;
 use App\Models\Ticket;
 use App\Models\TicketComment;
+use App\Models\TicketFeedback;
 use App\Models\TicketStatus;
 use App\Models\TicketStatusLog;
 use App\Models\User;
 use App\Support\AuditService;
 use App\Support\TicketRecipientResolver;
+use Illuminate\Support\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -67,6 +70,7 @@ class AdminTicketController extends Controller
             'ticket' => $ticket->load([
                 'system',
                 'module',
+                'designation',
                 'region',
                 'facility',
                 'department',
@@ -74,6 +78,7 @@ class AdminTicketController extends Controller
                 'priorityLevel',
                 'status',
                 'assignedStaff',
+                'feedback',
                 'resolutionCategory',
                 'closureReason',
                 'comments.author',
@@ -85,6 +90,27 @@ class AdminTicketController extends Controller
             'resolutionCategories' => ResolutionCategory::query()->where('active', true)->orderBy('sort_order')->get(),
             'closureReasons' => ClosureReason::query()->where('active', true)->orderBy('sort_order')->get(),
             'isWorkflowManager' => $this->isWorkflowManager($user),
+        ]);
+    }
+
+    public function auditTrail(Ticket $ticket): View
+    {
+        $this->authorizeTicket($ticket);
+
+        $ticket->load([
+            'system',
+            'status',
+            'assignedStaff',
+            'feedback',
+            'comments.author',
+            'statusLogs.oldStatus',
+            'statusLogs.newStatus',
+            'statusLogs.changedBy',
+        ]);
+
+        return view('admin.tickets.audit-trail', [
+            'ticket' => $ticket,
+            'timeline' => $this->buildTimeline($ticket),
         ]);
     }
 
@@ -207,6 +233,160 @@ class AdminTicketController extends Controller
             $this->isWorkflowManager($user) || $ticket->assigned_to === $user->id,
             403
         );
+    }
+
+    private function buildTimeline(Ticket $ticket): Collection
+    {
+        $feedbackAuditIds = $ticket->feedback
+            ? [$ticket->feedback->getKey()]
+            : [];
+
+        $auditLogs = AuditLog::query()
+            ->with('user:id,name')
+            ->where(function ($query) use ($ticket, $feedbackAuditIds) {
+                $query->where(function ($ticketQuery) use ($ticket) {
+                    $ticketQuery->where('auditable_type', Ticket::class)
+                        ->where('auditable_id', $ticket->getKey());
+                });
+
+                if ($feedbackAuditIds !== []) {
+                    $query->orWhere(function ($feedbackQuery) use ($feedbackAuditIds) {
+                        $feedbackQuery->where('auditable_type', TicketFeedback::class)
+                            ->whereIn('auditable_id', $feedbackAuditIds);
+                    });
+                }
+            })
+            ->orderBy('created_at')
+            ->get();
+
+        $events = collect();
+
+        foreach ($auditLogs as $log) {
+            $label = match ($log->action) {
+                'ticket.created' => 'Ticket created',
+                'ticket.feedback_submitted' => 'Customer feedback submitted',
+                default => null,
+            };
+
+            if ($label !== null) {
+                $events->push([
+                    'timestamp' => $log->created_at,
+                    'title' => $label,
+                    'actor' => $log->user?->name ?? 'System',
+                    'tone' => $log->action === 'ticket.feedback_submitted' ? 'success' : 'primary',
+                    'details' => $this->detailsForAuditLog($log),
+                ]);
+            }
+
+            if ($log->action === 'ticket.updated') {
+                foreach ($this->eventsForTicketUpdate($log, $ticket) as $event) {
+                    $events->push($event);
+                }
+            }
+        }
+
+        foreach ($ticket->statusLogs as $log) {
+            $events->push([
+                'timestamp' => $log->created_at,
+                'title' => 'Status changed',
+                'actor' => $log->changedBy?->name ?? 'System',
+                'tone' => 'info',
+                'details' => trim(($log->oldStatus?->name ?? 'New Ticket').' -> '.($log->newStatus?->name ?? 'Unknown')),
+            ]);
+        }
+
+        foreach ($ticket->comments as $comment) {
+            $events->push([
+                'timestamp' => $comment->created_at,
+                'title' => ucfirst($comment->comment_type).' comment added',
+                'actor' => $comment->author?->name ?? 'System',
+                'tone' => $comment->comment_type === 'public' ? 'success' : 'secondary',
+                'details' => $comment->comment,
+            ]);
+        }
+
+        return $events
+            ->sortByDesc(fn (array $event) => $event['timestamp'])
+            ->values();
+    }
+
+    private function detailsForAuditLog(AuditLog $log): string
+    {
+        if ($log->action === 'ticket.feedback_submitted') {
+            $newValues = $log->new_values ?? [];
+
+            return 'Timeliness '.($newValues['timeliness_rating'] ?? '?').'/5, Completeness '.($newValues['completeness_rating'] ?? '?').'/5, Overall '.($newValues['overall_satisfaction_rating'] ?? '?').'/5';
+        }
+
+        return 'Recorded by the workflow.';
+    }
+
+    private function eventsForTicketUpdate(AuditLog $log, Ticket $ticket): array
+    {
+        $oldValues = $log->old_values ?? [];
+        $newValues = $log->new_values ?? [];
+        $events = [];
+        $actor = $log->user?->name ?? 'System';
+
+        if (($oldValues['assigned_to'] ?? null) !== ($newValues['assigned_to'] ?? null)) {
+            $oldAssignee = $this->userLabel((int) ($oldValues['assigned_to'] ?? 0), $ticket);
+            $newAssignee = $this->userLabel((int) ($newValues['assigned_to'] ?? 0), $ticket);
+
+            $events[] = [
+                'timestamp' => $log->created_at,
+                'title' => ($oldValues['assigned_to'] ?? null) ? 'Ticket reassigned' : 'Ticket assigned',
+                'actor' => $actor,
+                'tone' => 'warning',
+                'details' => trim(($oldAssignee ? $oldAssignee.' -> ' : '').($newAssignee ?: 'Unassigned')),
+            ];
+        }
+
+        if (($oldValues['expected_resolution_date'] ?? null) !== ($newValues['expected_resolution_date'] ?? null)
+            && ! empty($newValues['expected_resolution_date'])) {
+            $events[] = [
+                'timestamp' => $log->created_at,
+                'title' => 'Expected resolution date updated',
+                'actor' => $actor,
+                'tone' => 'secondary',
+                'details' => 'New target: '.$newValues['expected_resolution_date'],
+            ];
+        }
+
+        if (($oldValues['resolution_summary'] ?? null) !== ($newValues['resolution_summary'] ?? null)
+            && ! empty($newValues['resolution_summary'])) {
+            $events[] = [
+                'timestamp' => $log->created_at,
+                'title' => 'Resolution summary updated',
+                'actor' => $actor,
+                'tone' => 'secondary',
+                'details' => (string) $newValues['resolution_summary'],
+            ];
+        }
+
+        if (($oldValues['training_recommended'] ?? null) !== ($newValues['training_recommended'] ?? null)) {
+            $events[] = [
+                'timestamp' => $log->created_at,
+                'title' => 'Training recommendation updated',
+                'actor' => $actor,
+                'tone' => 'secondary',
+                'details' => ! empty($newValues['training_recommended']) ? 'Training recommended' : 'Training not recommended',
+            ];
+        }
+
+        return $events;
+    }
+
+    private function userLabel(int $userId, Ticket $ticket): ?string
+    {
+        if ($userId === 0) {
+            return null;
+        }
+
+        if ($ticket->assignedStaff && $ticket->assignedStaff->getKey() === $userId) {
+            return $ticket->assignedStaff->name;
+        }
+
+        return User::query()->whereKey($userId)->value('name');
     }
 
     private function isWorkflowManager(User $user): bool

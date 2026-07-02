@@ -60,6 +60,24 @@
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
         }
 
+        .app-fieldset {
+            border: 1px solid #0e3873;
+            border-radius: 1rem;
+            padding: 1.25rem;
+            margin: 0;
+            background: rgba(255, 255, 255, 0.92);
+        }
+
+        .app-fieldset legend {
+            width: auto;
+            margin: 0 0 0.25rem;
+            padding: 0 0.65rem;
+            color: #0e3873;
+            font-size: 1rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
         .stats-badge {
             display: inline-flex;
             align-items: center;

@@ -8,6 +8,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\URL;
 
 class TicketStatusUpdatedMail extends Mailable
 {
@@ -24,6 +25,10 @@ class TicketStatusUpdatedMail extends Mailable
 
     public function content(): Content
     {
-        return new Content(view: 'mail.ticket-status-updated');
+        return new Content(view: 'mail.ticket-status-updated', with: [
+            'feedbackUrl' => $this->ticket->canReceiveFeedback()
+                ? URL::signedRoute('tickets.feedback.show', ['ticket' => $this->ticket])
+                : null,
+        ]);
     }
 }

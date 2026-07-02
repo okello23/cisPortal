@@ -10,9 +10,9 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Artisan::command('tickets:send-reminders', function (TicketReminderService $ticketReminderService) {
-    $sent = $ticketReminderService->sendStaleAssignmentReminders();
+    $sent = $ticketReminderService->sendScheduledReminders();
 
-    $this->info("Sent {$sent} stale ticket reminder(s).");
-})->purpose('Send reminders for tickets that have not been worked on within 24 hours');
+    $this->info("Sent {$sent['unresolved']} unresolved ticket reminder(s) and {$sent['feedback']} rating reminder(s).");
+})->purpose('Send 3-day unresolved ticket and feedback reminder emails');
 
 Schedule::command('tickets:send-reminders')->hourly();

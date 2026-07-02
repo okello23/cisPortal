@@ -14,8 +14,13 @@
 
                 <div class="row g-3">
                     <div class="col-md-6"><strong>Reporter:</strong> {{ $ticket->full_name }}</div>
+                    <div class="col-md-6"><strong>Designation:</strong> {{ $ticket->designation?->name ?? 'N/A' }}</div>
                     <div class="col-md-6"><strong>Contact:</strong> {{ $ticket->email ?? $ticket->phone ?? 'N/A' }}</div>
+                    <div class="col-md-6"><strong>Lab Manager:</strong> {{ $ticket->lab_manager_name ?? 'N/A' }}</div>
+                    <div class="col-md-6"><strong>Lab Manager Email:</strong> {{ $ticket->lab_manager_email ?? 'N/A' }}</div>
                     <div class="col-md-6"><strong>System:</strong> {{ $ticket->system->name }}</div>
+                    <div class="col-md-6"><strong>District:</strong> {{ $ticket->district_name ?? 'N/A' }}</div>
+                    <div class="col-md-6"><strong>Issue Began:</strong> {{ optional($ticket->issue_started_at)->format('d M Y') ?? 'N/A' }}</div>
                     <div class="col-md-6"><strong>Module:</strong> {{ $ticket->module?->name ?? 'N/A' }}</div>
                     <div class="col-md-6"><strong>Region:</strong> {{ $ticket->region?->name ?? 'N/A' }}</div>
                     <div class="col-md-6"><strong>Facility:</strong> {{ $ticket->facility?->name ?? 'N/A' }}</div>
@@ -23,6 +28,19 @@
                     <div class="col-md-6"><strong>Priority:</strong> {{ $ticket->priorityLevel->name }}</div>
                     <div class="col-12"><strong>Description:</strong><br>{{ $ticket->description }}</div>
                     <div class="col-12"><strong>Resolution Summary:</strong><br>{{ $ticket->resolution_summary ?? 'No resolution summary yet.' }}</div>
+                    <div class="col-12">
+                        <strong>Customer Feedback:</strong><br>
+                        @if ($ticket->feedback)
+                            Timeliness {{ $ticket->feedback->timeliness_rating }}/5,
+                            Completeness {{ $ticket->feedback->completeness_rating }}/5,
+                            Overall {{ $ticket->feedback->overall_satisfaction_rating }}/5
+                            @if ($ticket->feedback->comments)
+                                <br>{{ $ticket->feedback->comments }}
+                            @endif
+                        @else
+                            No customer rating submitted yet.
+                        @endif
+                    </div>
                 </div>
             </div>
 

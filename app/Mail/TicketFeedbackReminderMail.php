@@ -8,8 +8,9 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\URL;
 
-class TicketReminderMail extends Mailable
+class TicketFeedbackReminderMail extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -19,11 +20,13 @@ class TicketReminderMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Reminder: unresolved ticket needs attention - '.$this->ticket->ticket_number);
+        return new Envelope(subject: 'Reminder: please rate support for ticket '.$this->ticket->ticket_number);
     }
 
     public function content(): Content
     {
-        return new Content(view: 'mail.ticket-reminder');
+        return new Content(view: 'mail.ticket-feedback-reminder', with: [
+            'feedbackUrl' => URL::signedRoute('tickets.feedback.show', ['ticket' => $this->ticket]),
+        ]);
     }
 }

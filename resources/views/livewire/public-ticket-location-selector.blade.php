@@ -1,7 +1,14 @@
 <div class="row g-4">
     <div class="col-md-6">
-        <label class="form-label">Region</label>
-        <select name="region_id" class="form-select js-location-select" wire:model.live="regionId" data-placeholder="Select region">
+        <label class="form-label">Region <span class="text-danger">*</span></label>
+        <select
+            name="region_id"
+            class="form-select js-location-select"
+            wire:key="region-select-{{ $regionId }}"
+            data-model="regionId"
+            data-placeholder="Select region"
+            required
+        >
             <option value="">Select region</option>
             @foreach ($regions as $region)
                 <option value="{{ $region->id }}">{{ $region->name }}</option>
@@ -10,13 +17,15 @@
     </div>
 
     <div class="col-md-6">
-        <label class="form-label">District</label>
+        <label class="form-label">District <span class="text-danger">*</span></label>
         <select
             name="district_name"
             class="form-select js-location-select"
-            wire:model.live="districtName"
+            wire:key="district-select-{{ $regionId }}-{{ md5($districtName) }}"
+            data-model="districtName"
             data-placeholder="Select district"
             @disabled($regionId === '')
+            required
         >
             <option value="">Select district</option>
             @foreach ($districtOptions as $district)
@@ -24,18 +33,20 @@
             @endforeach
         </select>
         <div class="form-text">
-            {{ $regionId === '' ? 'Choose a region to load districts.' : 'District options are filtered by the selected region.' }}
+            {{ $regionId === '' ? '' : 'District options are filtered by the selected' }}
         </div>
     </div>
 
-    <div class="col-md-6">
-        <label class="form-label">Facility</label>
+    <div class="col-md-12">
+        <label class="form-label">Health Facility Name <span class="text-danger">*</span></label>
         <select
             name="facility_id"
             class="form-select js-location-select"
-            wire:model.live="facilityId"
+            wire:key="facility-select-{{ $regionId }}-{{ md5($districtName) }}-{{ $facilityId }}"
+            data-model="facilityId"
             data-placeholder="Select facility"
-            @disabled($regionId === '')
+            @disabled($districtName === '')
+            required
         >
             <option value="">Select facility</option>
             @foreach ($facilityOptions as $facility)
@@ -43,7 +54,7 @@
             @endforeach
         </select>
         <div class="form-text">
-            {{ $districtName !== '' ? 'Facilities are filtered to the selected district.' : 'Select a district to narrow the facilities further.' }}
+            {{ $districtName !== '' ? 'Facilities are filtered to the selected district.' : 'Choose a district first.' }}
         </div>
     </div>
 </div>

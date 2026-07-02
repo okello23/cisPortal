@@ -18,4 +18,9 @@ class TicketStatusLog extends Model
     {
         return $this->belongsTo(TicketStatus::class, 'new_status_id');
     }
+
+    public function changedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'changed_by');
+    }
 }

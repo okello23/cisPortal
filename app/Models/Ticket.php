@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\URL;
 
 class Ticket extends Model
 {
@@ -12,10 +14,15 @@ class Ticket extends Model
         'ticket_number',
         'system_id',
         'module_id',
+        'designation_id',
+        'issue_started_at',
         'full_name',
         'phone',
         'email',
+        'lab_manager_name',
+        'lab_manager_email',
         'region_id',
+        'district_name',
         'facility_id',
         'department_id',
         'issue_type_id',
@@ -31,6 +38,7 @@ class Ticket extends Model
         'assigned_at',
         'last_worked_at',
         'last_reminder_sent_at',
+        'feedback_reminder_sent_at',
         'resolution_category_id',
         'closure_reason_id',
         'expected_resolution_date',
@@ -42,10 +50,12 @@ class Ticket extends Model
 
     protected $casts = [
         'training_recommended' => 'boolean',
+        'issue_started_at' => 'date',
         'expected_resolution_date' => 'date',
         'assigned_at' => 'datetime',
         'last_worked_at' => 'datetime',
         'last_reminder_sent_at' => 'datetime',
+        'feedback_reminder_sent_at' => 'datetime',
         'resolved_at' => 'datetime',
         'closed_at' => 'datetime',
     ];
@@ -58,6 +68,11 @@ class Ticket extends Model
     public function module(): BelongsTo
     {
         return $this->belongsTo(SupportModule::class, 'module_id');
+    }
+
+    public function designation(): BelongsTo
+    {
+        return $this->belongsTo(Designation::class);
     }
 
     public function region(): BelongsTo
@@ -113,5 +128,28 @@ class Ticket extends Model
     public function statusLogs(): HasMany
     {
         return $this->hasMany(TicketStatusLog::class);
+    }
+
+    public function feedback(): HasOne
+    {
+        return $this->hasOne(TicketFeedback::class);
+    }
+
+    public function canReceiveFeedback(): bool
+    {
+        if ($this->email === null || $this->resolved_at === null || $this->status?->code !== 'resolved') {
+            return false;
+        }
+
+        if ($this->relationLoaded('feedback')) {
+            return $this->feedback === null;
+        }
+
+        return ! $this->feedback()->exists();
+    }
+
+    public function feedbackUrl(string $route = 'tickets.feedback.show'): string
+    {
+        return URL::signedRoute($route, ['ticket' => $this]);
     }
 }

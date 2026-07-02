@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\NewTicketAlertMail;
 use App\Mail\TicketConfirmationMail;
+use App\Models\Designation;
 use App\Models\Facility;
 use App\Models\IssueType;
 use App\Models\PriorityLevel;
@@ -29,18 +30,9 @@ class PublicTicketController extends Controller
 
     public function create(Request $request): View
     {
-        $systemQuery = $request->string('system_name')->toString() ?: $request->string('system')->toString();
-        $selectedSystem = SupportSystem::query()
-            ->when($systemQuery !== '', function ($query) use ($systemQuery) {
-                $query->where(function ($nested) use ($systemQuery) {
-                    $nested->where('code', strtolower($systemQuery))
-                        ->orWhere('name', $systemQuery);
-                });
-            })
-            ->value('id');
-
         return view('tickets.create', [
-            'selectedSystem' => $selectedSystem,
+            'selectedSystem' => null,
+            'designations' => Designation::query()->where('active', true)->orderBy('sort_order')->orderBy('name')->get(),
             'systems' => SupportSystem::query()->where('active', true)->orderBy('sort_order')->get(),
             'regions' => Region::query()->where('active', true)->orderBy('sort_order')->get(),
             'facilities' => Facility::query()->where('active', true)->orderBy('sort_order')->get(),
@@ -53,11 +45,16 @@ class PublicTicketController extends Controller
     {
         $validated = $request->validate([
             'system_id' => ['required', 'exists:support_systems,id'],
+            'designation_id' => ['required', 'exists:designations,id'],
+            'issue_started_at' => ['required', 'date', 'before_or_equal:today'],
             'full_name' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:50'],
             'email' => ['required', 'email', 'max:255'],
-            'region_id' => ['nullable', 'exists:regions,id'],
-            'facility_id' => ['nullable', 'exists:facilities,id'],
+            'lab_manager_name' => ['required', 'string', 'max:255'],
+            'lab_manager_email' => ['required', 'email', 'max:255'],
+            'region_id' => ['required', 'exists:regions,id'],
+            'district_name' => ['required', 'string', 'max:255'],
+            'facility_id' => ['required', 'exists:facilities,id'],
             'issue_type_id' => ['required', 'exists:issue_types,id'],
             'priority_level_id' => ['required', 'exists:priority_levels,id'],
             'description' => ['required', 'string', 'min:10'],
@@ -89,12 +86,18 @@ class PublicTicketController extends Controller
 
         rescue(function () use ($ticket) {
             Mail::to(config('mail.from.address', 'ictsupport@cphl.go.ug'))
-                ->send(new NewTicketAlertMail($ticket->load(['system', 'module', 'issueType', 'priorityLevel'])));
+                ->send(new NewTicketAlertMail($ticket->load(['system', 'module', 'designation', 'issueType', 'priorityLevel'])));
         }, report: false);
 
         if ($ticket->email) {
             rescue(function () use ($ticket) {
-                Mail::to($ticket->email)->send(new TicketConfirmationMail($ticket->load('status')));
+                $mailer = Mail::to($ticket->email);
+
+                if ($ticket->lab_manager_email && strcasecmp($ticket->lab_manager_email, $ticket->email) !== 0) {
+                    $mailer->cc($ticket->lab_manager_email);
+                }
+
+                $mailer->send(new TicketConfirmationMail($ticket->load('status')));
             }, report: false);
         }
 

@@ -32,6 +32,7 @@
                 <thead>
                     <tr>
                         <th>Ticket</th>
+                        <th>Audit Trail</th>
                         <th>Reporter</th>
                         <th>Status</th>
                         <th>Priority</th>
@@ -44,6 +45,9 @@
                             <td>
                                 <a href="{{ route('admin.tickets.show', $ticket) }}" class="fw-semibold">{{ $ticket->ticket_number }}</a>
                                 <div class="text-muted small">{{ $ticket->system->name }}</div>
+                            </td>
+                            <td>
+                                <a href="{{ route('admin.tickets.audit-trail', $ticket) }}" class="btn btn-sm btn-outline-secondary rounded-pill">View Audit Trail</a>
                             </td>
                             <td>{{ $ticket->full_name }}</td>
                             <td>{{ $ticket->status->name }}</td>

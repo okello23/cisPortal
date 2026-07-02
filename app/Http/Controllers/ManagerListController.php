@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ClosureReason;
+use App\Models\Designation;
 use App\Models\Department;
 use App\Models\Facility;
 use App\Models\IssueType;
@@ -215,6 +216,7 @@ class ManagerListController extends Controller
             'regions' => [Region::class, ['name', 'code', 'description', 'sort_order', 'active'], 'Regions'],
             'facilities' => [Facility::class, ['region_id', 'name', 'code', 'description', 'sort_order', 'active'], 'Facilities'],
             'departments' => [Department::class, ['name', 'code', 'description', 'sort_order', 'active'], 'Departments'],
+            'designations' => [Designation::class, ['name', 'code', 'description', 'sort_order', 'active'], 'Designations'],
             'issue-types' => [IssueType::class, ['name', 'code', 'description', 'sort_order', 'active'], 'Issue Types'],
             'priority-levels' => [PriorityLevel::class, ['name', 'code', 'sla_hours', 'description', 'sort_order', 'active'], 'Priority Levels'],
             'ticket-statuses' => [TicketStatus::class, ['name', 'code', 'color', 'sort_order', 'active'], 'Ticket Statuses'],
