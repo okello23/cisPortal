@@ -1,19 +1,46 @@
-<div wire:loading.class="opacity-75">
-    <div class="public-dashboard-shell">
+<div wire:loading.class="opacity-90">
+    <!-- <div class="public-dashboard-shell"> -->
+          <fieldset class="content-card dashboard-fieldset" style="border-color: red;">
+                      <legend><h3>Dashboard</h3></legend>
 
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                <div>
-                    <h3 class="h4 mb-1">Filters</h3>
-                </div>
-                <button type="button" class="btn btn-outline-secondary rounded-pill px-4" wire:click="resetFilters">Reset Filters</button>
-            </div>
-
-            <div class="row g-3">
+                 
+                      
+                      <div class="row g-6">
                 <div class="col-md-3">
                     <label class="form-label">Date Filter</label>
                     <select wire:model.live="period" class="form-select">
                         @foreach ($periodOptions as $value => $label)
                             <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                  <div class="col-md-3">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" wire:model.live="startDate" class="form-control" @disabled($period !== 'custom')>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">End Date</label>
+                    <input type="date" wire:model.live="endDate" class="form-control" @disabled($period !== 'custom')>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Region</label>
+                    <select wire:model.live="regionId" class="form-select">
+                        <option value="">All regions</option>
+                        @foreach ($regions as $region)
+                            <option value="{{ $region->id }}">{{ $region->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Facility Level</label>
+                    <select wire:model.live="facilityType" class="form-select">
+                        <option value="">All facility kinds</option>
+                        @foreach ($facilityTypes as $facilityType)
+                            <option value="{{ $facilityType }}">{{ $facilityType }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -26,15 +53,6 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label">Facility Kind</label>
-                    <select wire:model.live="facilityType" class="form-select">
-                        <option value="">All facility kinds</option>
-                        @foreach ($facilityTypes as $facilityType)
-                            <option value="{{ $facilityType }}">{{ $facilityType }}</option>
-                        @endforeach
-                    </select>
-                </div>
                 <div class="col-md-4">
                     <label class="form-label">System</label>
                     <select wire:model.live="systemId" class="form-select">
@@ -44,24 +62,24 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label">Start Date</label>
-                    <input type="date" wire:model.live="startDate" class="form-control" @disabled($period !== 'custom')>
+                <br><br><br><br>
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <div>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label">End Date</label>
-                    <input type="date" wire:model.live="endDate" class="form-control" @disabled($period !== 'custom')>
-                </div>
+                <button type="button" class="btn btn-outline-danger rounded-pill px-4 " wire:click="resetFilters">Reset Filters</button>
             </div>
+        </div>
+    </div>
+    <hr class="my-2">
 
             <fieldset class="content-card dashboard-fieldset">
-                     <legend>Today's Snapshot</legend>
+                <legend>Today's Snapshot</legend>
                 <div>
                 
                     <p class="text-muted mb-0">{{ $selectedDate }}</p>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <span class="stats-badge stats-badge--teal">Daily Stats</span>
+                    <!-- <span class="stats-badge stats-badge--teal">Daily Stats</span> -->
                     <span class="small text-muted" wire:loading.delay>Updating...</span>
                 </div>
                 

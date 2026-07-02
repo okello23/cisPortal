@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Models\Region;
 use App\Models\Facility;
 use App\Models\SupportSystem;
 use App\Models\Ticket;
@@ -19,11 +20,13 @@ class PublicDashboardBoard extends Component
     public ?string $systemId = '';
     public ?string $startDate = '';
     public ?string $endDate = '';
+    public ?string $regionId = '';
 
     public function mount(): void
     {
         $this->period = request()->string('period')->toString() ?: 'all_time';
         $this->facilityId = request()->string('facility_id')->toString();
+        $this->regionId = request()->string('region_id')->toString();
         $this->facilityType = request()->string('facility_type')->toString();
         $this->systemId = request()->string('system_id')->toString();
         $this->startDate = request()->string('start_date')->toString();
@@ -43,6 +46,7 @@ class PublicDashboardBoard extends Component
         $this->period = 'all_time';
         $this->facilityId = '';
         $this->facilityType = '';
+        $this->regionId = '';
         $this->systemId = '';
         $this->startDate = '';
         $this->endDate = '';
@@ -59,6 +63,7 @@ class PublicDashboardBoard extends Component
             'todayStats' => $todayStats,
             'stats' => $stats,
             'periodOptions' => $this->periodOptions(),
+            'regions' => Region::query()->where('active', true)->orderBy('name')->get(),
             'systems' => SupportSystem::query()->where('active', true)->orderBy('name')->get(),
             'facilities' => Facility::query()->where('active', true)->orderBy('name')->get(),
             'facilityTypes' => Facility::query()
@@ -87,6 +92,13 @@ class PublicDashboardBoard extends Component
                 ->select('facilities.name', DB::raw('count(*) as total'))
                 ->leftJoin('facilities', 'facilities.id', '=', 'tickets.facility_id')
                 ->groupBy('facilities.name')
+                ->orderByDesc('total')
+                ->limit(10)
+                ->get(),
+            'byRegion' => (clone $filteredQuery)
+                ->select('regions.name', DB::raw('count(*) as total'))
+                ->leftJoin('regions', 'regions.id', '=', 'tickets.region_id')
+                ->groupBy('regions.name')
                 ->orderByDesc('total')
                 ->limit(10)
                 ->get(),
@@ -136,6 +148,7 @@ class PublicDashboardBoard extends Component
             'this_month' => (clone $baseQuery)
                 ->whereBetween('created_at', [now()->copy()->startOfMonth(), now()->copy()->endOfMonth()])
                 ->count(),
+            'regions' => (clone $baseQuery)->distinct('region_id')->whereNotNull('region_id')->count('region_id'),
             'facilities' => (clone $baseQuery)->distinct('facility_id')->whereNotNull('facility_id')->count('facility_id'),
             'systems' => (clone $baseQuery)->distinct('system_id')->whereNotNull('system_id')->count('system_id'),
             'total_logged' => (clone $query)->count(),
@@ -166,6 +179,10 @@ class PublicDashboardBoard extends Component
         if ($this->facilityId !== '') {
             $query->where('facility_id', (int) $this->facilityId);
         }
+
+        if ($this->regionId !== '') {
+            $query->where('region_id', (int) $this->regionId);
+        }   
 
         if ($this->facilityType !== '') {
             $facilityType = trim($this->facilityType);
