@@ -1,7 +1,7 @@
 <div wire:loading.class="opacity-90">
     <!-- <div class="public-dashboard-shell"> -->
-          <fieldset class="content-card dashboard-fieldset" style="border-color: red;">
-                      <legend><h3>Dashboard</h3></legend>
+          <fieldset class="content-card dashboard-fieldset">
+                      <legend> CSI Dashboard</legend>
 
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                  
@@ -70,9 +70,9 @@
             </div>
         </div>
     </div>
-    <hr class="my-2">
+    <hr class="my-2"  style="color: #f29113ff;">
 
-            <fieldset class="content-card dashboard-fieldset">
+             <fieldset class="content-card dashboard-fieldset">
                 <legend>Today's Snapshot</legend>
                 <div>
                 

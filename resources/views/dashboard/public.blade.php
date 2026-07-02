@@ -144,7 +144,7 @@
         .stat-icon-box--rose { background: #bf1f47; }
 
         .dashboard-fieldset {
-           border: 1px solid #000;
+           border: 1px solid #0e3873ff;
            padding: 0.5rem;
            margin-bottom: 0.5rem;
            border-radius: 0.5rem;
@@ -155,6 +155,7 @@
             width: auto;
             padding: 0 10px;
             margin: 0 0 0.5rem;
+            color: #0e3873ff;
             font-size: 0.95rem;
             font-weight: 800;
         }
