@@ -46,11 +46,13 @@ class PublicTicketLocationSelector extends Component
 
     public function updatedRegionId(): void
     {
+        $this->districtOptions();
         $this->districtName = '';
         $this->facilityId = '';
         $this->districtSearch = '';
         $this->facilitySearch = '';
     }
+
 
     public function updatedDistrictName(): void
     {
