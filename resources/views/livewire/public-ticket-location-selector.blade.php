@@ -3,7 +3,7 @@
         <label class="form-label">Region <span class="text-danger">*</span></label>
         <select
             name="region_id"
-            class="form-select js-location-select"
+            class="form-select"
             wire:model.live="regionId"
             wire:key="region-select-{{ $regionId }}"
             data-model="regionId"
@@ -21,7 +21,7 @@
         <label class="form-label">District <span class="text-danger">*</span></label>
         <select
             name="district_name"
-            class="form-select js-location-select"
+            class="form-select"
             wire:model.live="districtName"
             wire:key="district-select-{{ $regionId }}-{{ md5($districtName) }}"
             data-model="districtName"
