@@ -173,8 +173,16 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            const syncSelectState = ($select, select) => {
+                $select.val(select.value).trigger('change.select2');
+                $select.prop('disabled', select.disabled);
+
+                const container = $select.next('.select2-container');
+                container.toggleClass('select2-container--disabled', select.disabled);
+            };
+
             const initLocationSelect = (select) => {
-                if (!select || select.closest('.select2-container')) {
+                if (!select) {
                     return;
                 }
 
@@ -194,7 +202,7 @@
                     allowClear: true,
                 });
 
-                $select.val(select.value).trigger('change.select2');
+                syncSelectState($select, select);
 
                 if (component && model) {
                     $select.on('change.select2-livewire', function () {
@@ -243,7 +251,9 @@
             });
 
             observer.observe(document.body, {
+                attributes: true,
                 childList: true,
+                attributeFilter: ['disabled'],
                 subtree: true,
             });
         });
