@@ -256,7 +256,7 @@ class PublicDashboardBoard extends Component
         return [
             [
                 'key' => 'total_logged',
-                'label' => 'Total Tickets Logged',
+                'label' => 'No. Of Total Tickets Logged',
                 'value' => $stats['total_logged'],
                 'hover_text' => 'Open to view the most recent tickets captured in the selected date range and facility filters.',
                 'modal_title' => 'Total Tickets Logged',
@@ -266,7 +266,7 @@ class PublicDashboardBoard extends Component
             ],
             [
                 'key' => 'assigned',
-                'label' => 'Assigned Tickets',
+                'label' => 'Assigned To Support Staff',
                 'value' => $stats['assigned'],
                 'hover_text' => 'Open to view tickets that have already been assigned to a staff member.',
                 'modal_title' => 'Assigned Tickets',
@@ -276,7 +276,7 @@ class PublicDashboardBoard extends Component
             ],
             [
                 'key' => 'pending_assignment',
-                'label' => 'Pending Assignment',
+                'label' => 'Pending Assignment To Support Staff',
                 'value' => $stats['pending_assignment'],
                 'hover_text' => 'Open to view tickets still waiting for ownership so users know these have not yet been assigned.',
                 'modal_title' => 'Pending Assignment',
@@ -290,24 +290,15 @@ class PublicDashboardBoard extends Component
             ],
             [
                 'key' => 'resolved',
-                'label' => 'Resolved',
+                'label' => 'Resolved/Closed By Support Staff',
                 'value' => $stats['resolved'],
                 'hover_text' => 'Open to review tickets marked as resolved in the selected period.',
                 'modal_title' => 'Resolved Tickets',
                 'modal_description' => 'Tickets whose current status is resolved.',
                 'type' => 'tickets',
-                'rows' => $this->ticketRows((clone $query)->whereHas('status', fn ($status) => $status->where('code', 'resolved'))),
+                'rows' => $this->ticketRows((clone $query)->whereHas('status', fn ($status) => $status->where('code', 'resolved'))->whereHas('status', fn ($status) => $status->where('code', 'escalated')))
             ],
-            [
-                'key' => 'closed',
-                'label' => 'Closed',
-                'value' => $stats['closed'],
-                'hover_text' => 'Open to review tickets that have been fully closed out.',
-                'modal_title' => 'Closed Tickets',
-                'modal_description' => 'Tickets whose current status is closed.',
-                'type' => 'tickets',
-                'rows' => $this->ticketRows((clone $query)->whereHas('status', fn ($status) => $status->where('code', 'closed'))),
-            ],
+           
             [
                 'key' => 'escalated',
                 'label' => 'Tickets Escalated to Devs',

@@ -33,7 +33,7 @@
 
         .home-hero .metric-card {
             backdrop-filter: blur(10px);
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(234, 226, 226, 0.9);
             border-radius: 1.25rem;
         }
 
@@ -99,11 +99,10 @@
 @endpush
 
 @section('content')
-    <section class="hero-panel home-hero p-4 p-lg-5 mb-4">
+    <section class="hero-panel home-hero p-1 p-lg-3 mb-2">
         <div class="row g-4 align-items-center">
             <div class="col-lg-7">
-                <p class="text-uppercase fw-semibold small mb-2">Centralized ICT support for every CPHL system</p>
-                <h1 class="hero-title display-5 fw-bold mb-3">Log issues quickly, track them openly, and manage response quality in one place.</h1>
+                <h1 class="hero-title display-4 fw-bold mb-3">Log issues quickly, track them openly, and manage response quality in one place.</h1>
                 <p class="lead mb-4">CIS is the official ticket intake and management platform for CPHL-supported digital systems, built for public reporting and internal accountability.</p>
                 <div class="d-flex flex-wrap gap-3">
                     <a class="btn btn-light btn-lg rounded-pill px-4" href="{{ route('tickets.create') }}">Submit Ticket</a>
@@ -113,7 +112,7 @@
             <div class="col-lg-5">
                 <div class="hero-stats-panel">
                     <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
-                        <div class="hero-stats-group-title">Today's Snapshot</div>
+                        <h3>Today's Snapshot</h3>
                         <div class="hero-stats-date">{{ now()->format('d M Y') }}</div>
                     </div>
                     <div class="row g-3 mb-4">
@@ -132,11 +131,12 @@
                             </div>
                         @endforeach
                     </div>
-
-                    <div class="hero-stats-group-title mb-3">All-Time Overview</div>
+                    <hr class="my-4">
+    
+                    <h3>All-Time Overview</h3>
                     <div class="row g-3">
                         @foreach ([
-                            ['label' => 'Total Tickets', 'value' => $overviewStats['total'] ?? 0, 'badge' => 'All Cases', 'class' => 'stats-badge--navy', 'accent' => '#123b5d'],
+                            ['label' => 'Total Tickets', 'value' => $overviewStats['total'] ?? 0, 'badge' => 'All Tickets', 'class' => 'stats-badge--navy', 'accent' => '#123b5d'],
                             ['label' => 'Open Tickets', 'value' => $overviewStats['open'] ?? 0, 'badge' => 'Backlog', 'class' => 'stats-badge--teal', 'accent' => '#0d9488'],
                             ['label' => 'This Month', 'value' => $overviewStats['this_month'] ?? 0, 'badge' => 'Monthly', 'class' => 'stats-badge--orange', 'accent' => '#f28c28'],
                             ['label' => 'Avg Hours', 'value' => $overviewStats['average_resolution_hours'] ?? 0, 'badge' => 'SLA Pace', 'class' => 'stats-badge--plum', 'accent' => '#7b3f6c'],
@@ -153,27 +153,6 @@
                         @endforeach
                     </div>
                 </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="row g-4">
-        <div class="col-lg-4">
-            <div class="content-card bg-white p-4 h-100">
-                <h2 class="h4">Public Ticket Submission</h2>
-                <p class="text-muted">Users can report ICT issues without creating accounts, with the affected system and location captured in one guided form.</p>
-            </div>
-        </div>
-        <div class="col-lg-4">
-            <div class="content-card bg-white p-4 h-100">
-                <h2 class="h4">Transparent Tracking</h2>
-                <p class="text-muted">Track progress using the ticket number plus email or phone, with status, staff assignment, latest update, and expected resolution date.</p>
-            </div>
-        </div>
-        <div class="col-lg-4">
-            <div class="content-card bg-white p-4 h-100">
-                <h2 class="h4">ICT Management Visibility</h2>
-                <p class="text-muted">Dashboard views support SLA monitoring, repeat issue identification, training recommendations, and staff workload tracking.</p>
             </div>
         </div>
     </section>

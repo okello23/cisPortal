@@ -197,7 +197,7 @@ class PublicDashboardController extends Controller
             ],
             [
                 'key' => 'assigned',
-                'label' => 'Assigned Tickets',
+                'label' => 'Assigned To Support Staff',
                 'value' => $stats['assigned'],
                 'hover_text' => 'Open to view tickets that have already been assigned to a staff member.',
                 'modal_title' => 'Assigned Tickets',
@@ -207,7 +207,7 @@ class PublicDashboardController extends Controller
             ],
             [
                 'key' => 'pending_assignment',
-                'label' => 'Pending Assignment',
+                'label' => 'Pending Assignment To Support Staff',
                 'value' => $stats['pending_assignment'],
                 'hover_text' => 'Open to view tickets still waiting for ownership so users know these have not yet been assigned.',
                 'modal_title' => 'Pending Assignment',
@@ -221,7 +221,7 @@ class PublicDashboardController extends Controller
             ],
             [
                 'key' => 'resolved',
-                'label' => 'Resolved',
+                'label' => 'Resolved By Support Staff',
                 'value' => $stats['resolved'],
                 'hover_text' => 'Open to review tickets marked as resolved in the selected period.',
                 'modal_title' => 'Resolved Tickets',
@@ -241,7 +241,7 @@ class PublicDashboardController extends Controller
             ],
             [
                 'key' => 'escalated',
-                'label' => 'Tickets Escalated to Devs',
+                'label' => 'Escalated To Technical Support',
                 'value' => $stats['escalated'],
                 'hover_text' => 'Open to inspect tickets that have been escalated to developers or higher technical support.',
                 'modal_title' => 'Tickets Escalated to Devs',

@@ -143,6 +143,22 @@
         .stat-icon-box--gold { background: #ea8a1f; }
         .stat-icon-box--rose { background: #bf1f47; }
 
+        .dashboard-fieldset {
+           border: 1px solid #000;
+           padding: 0.5rem;
+           margin-bottom: 0.5rem;
+           border-radius: 0.5rem;
+        }
+
+        .dashboard-fieldset legend {
+            float: none;
+            width: auto;
+            padding: 0 10px;
+            margin: 0 0 0.5rem;
+            font-size: 0.95rem;
+            font-weight: 800;
+        }
+
         @media (max-width: 991.98px) {
             .public-dashboard-shell {
                 border-radius: 1.5rem;
@@ -151,6 +167,16 @@
 
             .public-dashboard-shell::before {
                 background-position: center center;
+            }
+
+            .dashboard-fieldset {
+                padding: 0.85rem 1rem 1rem;
+                border-radius: 1rem;
+            }
+
+            .dashboard-fieldset legend {
+                font-size: 0.88rem;
+                max-width: 100%;
             }
 
             .stats-strip {
