@@ -1,5 +1,50 @@
 @extends('layouts.app', ['title' => 'Report ICT Issue'])
 
+@push('styles')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <style>
+        .select2-container {
+            width: 100% !important;
+        }
+
+        .select2-container .select2-selection--single {
+            min-height: calc(1.5em + 0.75rem + 2px);
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            padding: 0.375rem 2.25rem 0.375rem 0.75rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .select2-container .select2-selection--single .select2-selection__rendered {
+            color: #212529;
+            line-height: 1.5;
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        .select2-container .select2-selection--single .select2-selection__placeholder {
+            color: #6c757d;
+        }
+
+        .select2-container .select2-selection--single .select2-selection__arrow {
+            height: 100%;
+            right: 0.75rem;
+        }
+
+        .select2-container--default.select2-container--disabled .select2-selection--single {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+        }
+
+        .select2-dropdown {
+            border-color: #dee2e6;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+    </style>
+@endpush
+
 @section('content')
     <div class="row justify-content-center">
         <div class="col-xl-10">
@@ -42,37 +87,11 @@
                         <label class="form-label">Email Address <span class="text-danger">*</span></label>
                         <input type="email" name="email" class="form-control" value="{{ old('email') }}" required>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Region</label>
-                        <select name="region_id" class="form-select" id="region-select">
-                            <option value="">Select region</option>
-                            @foreach ($regions as $region)
-                                <option value="{{ $region->id }}" @selected(old('region_id') == $region->id)>{{ $region->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">District</label>
-                        <select name="district_name" class="form-select" id="district-select">
-                            <option value="">Select district</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Facility</label>
-                        <select name="facility_id" class="form-select" id="facility-select">
-                            <option value="">Select facility</option>
-                            @foreach ($facilities as $facility)
-                                <option
-                                    value="{{ $facility->id }}"
-                                    data-region-id="{{ $facility->region_id }}"
-                                    data-district-name="{{ $facility->district_name }}"
-                                    @selected(old('facility_id') == $facility->id)
-                                >
-                                    {{ $facility->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
+                    <livewire:public-ticket-location-selector
+                        :selected-region-id="old('region_id')"
+                        :selected-district-name="old('district_name')"
+                        :selected-facility-id="old('facility_id')"
+                    />
                     <div class="col-12">
                         <h2 class="h5">Ticket Information</h2>
                     </div>
@@ -113,82 +132,71 @@
 @endsection
 
 @push('scripts')
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
-        const regionSelect = document.getElementById('region-select');
-        const districtSelect = document.getElementById('district-select');
-        const facilitySelect = document.getElementById('facility-select');
-        const facilityOptions = Array.from(facilitySelect.querySelectorAll('option[data-region-id]'));
-        const selectedDistrict = @json(old('district_name'));
-
-        function buildDistrictOptions() {
-            const regionId = regionSelect.value;
-            if (!regionId) {
-                districtSelect.innerHTML = '<option value="">Select district</option>';
-                districtSelect.disabled = true;
-                return;
-            }
-
-            const districtNames = [...new Set(
-                facilityOptions
-                    .filter(option => option.dataset.regionId === regionId)
-                    .map(option => option.dataset.districtName)
-                    .filter(Boolean)
-            )].sort((a, b) => a.localeCompare(b));
-
-            const currentDistrict = districtSelect.value || selectedDistrict;
-            districtSelect.innerHTML = '<option value="">Select district</option>';
-
-            districtNames.forEach(name => {
-                const option = document.createElement('option');
-                option.value = name;
-                option.textContent = name;
-                if (name === currentDistrict) {
-                    option.selected = true;
+        document.addEventListener('DOMContentLoaded', () => {
+            const initLocationSelect = (select) => {
+                if (!select || select.closest('.select2-container')) {
+                    return;
                 }
-                districtSelect.appendChild(option);
-            });
 
-            districtSelect.disabled = districtNames.length === 0;
-        }
+                const $select = window.jQuery(select);
 
-        function syncFacilities() {
-            const regionId = regionSelect.value;
-            const districtName = districtSelect.value;
+                if ($select.hasClass('select2-hidden-accessible')) {
+                    $select.select2('destroy');
+                }
 
-            if (!regionId) {
-                facilityOptions.forEach(option => {
-                    option.hidden = true;
+                $select.select2({
+                    width: '100%',
+                    placeholder: select.dataset.placeholder || 'Select option',
+                    allowClear: true,
                 });
-                facilitySelect.value = '';
-                facilitySelect.disabled = true;
-                return;
-            }
+            };
 
-            facilityOptions.forEach(option => {
-                const matchesRegion = option.dataset.regionId === regionId;
-                const matchesDistrict = !districtName || option.dataset.districtName === districtName;
-                option.hidden = !(matchesRegion && matchesDistrict);
+            const initLocationSelects = (scope = document) => {
+                scope.querySelectorAll('.js-location-select').forEach(initLocationSelect);
+            };
+
+            initLocationSelects();
+
+            const observer = new MutationObserver((mutations) => {
+                const dirtySelects = new Set();
+
+                mutations.forEach((mutation) => {
+                    if (mutation.target instanceof Element) {
+                        if (mutation.target.matches('.js-location-select')) {
+                            dirtySelects.add(mutation.target);
+                        }
+
+                        const parentSelect = mutation.target.closest('.js-location-select');
+                        if (parentSelect) {
+                            dirtySelects.add(parentSelect);
+                        }
+                    }
+
+                    mutation.addedNodes.forEach((node) => {
+                        if (!(node instanceof Element) || node.closest('.select2-container')) {
+                            return;
+                        }
+
+                        if (node.matches('.js-location-select')) {
+                            dirtySelects.add(node);
+                        }
+
+                        node.querySelectorAll?.('.js-location-select').forEach((select) => {
+                            dirtySelects.add(select);
+                        });
+                    });
+                });
+
+                dirtySelects.forEach(initLocationSelect);
             });
 
-            if (facilitySelect.selectedOptions[0]?.hidden) {
-                facilitySelect.value = '';
-            }
-
-            facilitySelect.disabled = facilityOptions.filter(option => !option.hidden).length === 0;
-        }
-
-        function syncLocationCascade() {
-            buildDistrictOptions();
-            syncFacilities();
-        }
-
-        systemSelect.addEventListener('change', syncModules);
-        regionSelect.addEventListener('change', () => {
-            districtSelect.value = '';
-            syncLocationCascade();
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+            });
         });
-        districtSelect.addEventListener('change', syncFacilities);
-
-        syncLocationCascade();
     </script>
 @endpush

@@ -44,8 +44,8 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-4">
-                    <label class="form-label">Facility</label>
+                <div class="col-md-6">
+                    <label class="form-label">Health Facility</label>
                     <select wire:model.live="facilityId" class="form-select">
                         <option value="">All facilities</option>
                         @foreach ($facilities as $facility)
@@ -53,7 +53,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label">System</label>
                     <select wire:model.live="systemId" class="form-select">
                         <option value="">All systems</option>
@@ -62,7 +62,7 @@
                         @endforeach
                     </select>
                 </div>
-                <br><br><br><br>
+                <br><br><br>
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                     <div>
                 </div>
