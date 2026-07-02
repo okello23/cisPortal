@@ -4,6 +4,7 @@
         <select
             name="region_id"
             class="form-select js-location-select"
+            wire:model.live="regionId"
             wire:key="region-select-{{ $regionId }}"
             data-model="regionId"
             data-placeholder="Select region"
@@ -11,7 +12,7 @@
         >
             <option value="">Select region</option>
             @foreach ($regions as $region)
-                <option value="{{ $region->id }}">{{ $region->name }}</option>
+                <option value="{{ $region->id }}" @selected($regionId === (string) $region->id)>{{ $region->name }}</option>
             @endforeach
         </select>
     </div>
@@ -21,6 +22,7 @@
         <select
             name="district_name"
             class="form-select js-location-select"
+            wire:model.live="districtName"
             wire:key="district-select-{{ $regionId }}-{{ md5($districtName) }}"
             data-model="districtName"
             data-placeholder="Select district"
@@ -29,7 +31,7 @@
         >
             <option value="">Select district</option>
             @foreach ($districtOptions as $district)
-                <option value="{{ $district }}">{{ $district }}</option>
+                <option value="{{ $district }}" @selected($districtName === $district)>{{ $district }}</option>
             @endforeach
         </select>
         <div class="form-text">
@@ -42,6 +44,7 @@
         <select
             name="facility_id"
             class="form-select js-location-select"
+            wire:model.live="facilityId"
             wire:key="facility-select-{{ $regionId }}-{{ md5($districtName) }}-{{ $facilityId }}"
             data-model="facilityId"
             data-placeholder="Select facility"
@@ -50,7 +53,7 @@
         >
             <option value="">Select facility</option>
             @foreach ($facilityOptions as $facility)
-                <option value="{{ $facility->id }}">{{ $facility->name }}</option>
+                <option value="{{ $facility->id }}" @selected($facilityId === (string) $facility->id)>{{ $facility->name }}</option>
             @endforeach
         </select>
         <div class="form-text">
