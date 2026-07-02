@@ -173,15 +173,15 @@ class PublicDashboardBoard extends Component
         $query = Ticket::query();
 
         if ($this->systemId !== '') {
-            $query->where('system_id', (int) $this->systemId);
+            $query->where('tickets.system_id', (int) $this->systemId);
         }
 
         if ($this->facilityId !== '') {
-            $query->where('facility_id', (int) $this->facilityId);
+            $query->where('tickets.facility_id', (int) $this->facilityId);
         }
 
         if ($this->regionId !== '') {
-            $query->where('region_id', (int) $this->regionId);
+            $query->where('tickets.region_id', (int) $this->regionId);
         }   
 
         if ($this->facilityType !== '') {
@@ -192,7 +192,7 @@ class PublicDashboardBoard extends Component
         [$from, $to] = $this->periodRange();
 
         if ($from && $to) {
-            $query->whereBetween('created_at', [$from, $to]);
+            $query->whereBetween('tickets.created_at', [$from, $to]);
         }
 
         return $query;
