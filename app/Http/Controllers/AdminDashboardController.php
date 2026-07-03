@@ -24,6 +24,9 @@ class AdminDashboardController extends Controller
     {
         $user = Auth::user();
         $canViewManagerDashboard = $user->hasAnyRole([User::ROLE_ICT_ADMIN, User::ROLE_ICT_MANAGER]);
+        $performanceFilters = [
+            'staff_id' => $request->integer('performance_staff_id') ?: null,
+        ];
         $query = Ticket::query()->with(['status', 'assignedStaff', 'system']);
 
         if (! $user->hasAnyRole(['ict_admin', 'ict_manager', 'ict_supervisor'])) {
@@ -51,7 +54,7 @@ class AdminDashboardController extends Controller
                     ->whereRaw('date(resolved_at) <= expected_resolution_date')
                     ->count(),
             ],
-            'performance' => $this->supportPerformanceService->buildForUser($user),
+            'performance' => $this->supportPerformanceService->buildForUser($user, $performanceFilters),
             'managerDashboard' => $canViewManagerDashboard ? $this->managerDashboardService->build($request) : null,
         ]);
     }
@@ -59,7 +62,9 @@ class AdminDashboardController extends Controller
     public function exportPerformance(Request $request, string $format): Response
     {
         $user = Auth::user();
-        $dataset = $this->supportPerformanceService->buildForUser($user);
+        $dataset = $this->supportPerformanceService->buildForUser($user, [
+            'staff_id' => $request->integer('performance_staff_id') ?: null,
+        ]);
         $rows = $this->supportPerformanceService->exportRows($dataset);
         $stamp = now()->format('Ymd_His');
 

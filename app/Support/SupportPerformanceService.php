@@ -11,9 +11,26 @@ use Illuminate\Support\Collection;
 
 class SupportPerformanceService
 {
-    public function buildForUser(User $viewer): array
+    public function buildForUser(User $viewer, array $filters = []): array
     {
-        $staff = $this->staffScope($viewer);
+        $staff = $this->staffScope($viewer, $filters);
+
+        if ($staff->isEmpty()) {
+            return [
+                'is_manager_scope' => $this->isManager($viewer),
+                'viewer' => $viewer,
+                'rows' => collect(),
+                'summary' => $this->summary(collect()),
+                'months' => $this->trendMonths(),
+                'filters' => [
+                    'staff_id' => $filters['staff_id'] ?? null,
+                ],
+                'filter_options' => [
+                    'staff' => $this->staffFilterOptions($viewer),
+                ],
+            ];
+        }
+
         $tickets = Ticket::query()
             ->with(['status', 'priorityLevel', 'feedback'])
             ->whereIn('assigned_to', $staff->pluck('id'))
@@ -88,7 +105,7 @@ class SupportPerformanceService
                 'reopened_tickets' => $reopenedCount,
                 'current_backlog' => $overdueTickets->count(),
                 'active_tickets' => $openTickets->count(),
-                'monthly_trends' => $this->monthlyTrends($assignedTickets),
+                'monthly_trends' => $this->monthlyTrends($staffMember, $assignedTickets, $staffStatusLogs),
             ];
         })->values();
 
@@ -98,6 +115,12 @@ class SupportPerformanceService
             'rows' => $rows,
             'summary' => $this->summary($rows),
             'months' => $this->trendMonths(),
+            'filters' => [
+                'staff_id' => $filters['staff_id'] ?? null,
+            ],
+            'filter_options' => [
+                'staff' => $this->staffFilterOptions($viewer),
+            ],
         ];
     }
 
@@ -146,17 +169,37 @@ class SupportPerformanceService
         ]);
     }
 
-    private function staffScope(User $viewer): Collection
+    private function staffScope(User $viewer, array $filters = []): Collection
     {
         if ($this->isManager($viewer)) {
             return User::query()
                 ->where('active', true)
                 ->where('role', User::ROLE_ICT_SUPPORT_STAFF)
+                ->when(
+                    ! empty($filters['staff_id']),
+                    fn ($query) => $query->whereKey((int) $filters['staff_id'])
+                )
                 ->orderBy('name')
                 ->get(['id', 'name', 'role']);
         }
 
         return collect([$viewer]);
+    }
+
+    private function staffFilterOptions(User $viewer): Collection
+    {
+        if (! $this->isManager($viewer)) {
+            return collect([$viewer])->map(fn (User $user) => (object) [
+                'id' => $user->id,
+                'name' => $user->name,
+            ]);
+        }
+
+        return User::query()
+            ->where('active', true)
+            ->where('role', User::ROLE_ICT_SUPPORT_STAFF)
+            ->orderBy('name')
+            ->get(['id', 'name']);
     }
 
     private function averageFirstResponseHours(Collection $tickets, Collection $comments, Collection $statusLogs): ?float
@@ -228,23 +271,40 @@ class SupportPerformanceService
         return $ratings->isEmpty() ? null : round($ratings->avg(), 2);
     }
 
-    private function monthlyTrends(Collection $tickets): array
+    private function monthlyTrends(User $staffMember, Collection $tickets, Collection $statusLogs): array
     {
         $months = $this->trendMonths();
 
-        return collect($months)->map(function (array $month) use ($tickets) {
+        return collect($months)->map(function (array $month) use ($staffMember, $tickets, $statusLogs) {
             $monthKey = $month['key'];
 
-            $monthTickets = $tickets->filter(fn (Ticket $ticket) => $ticket->assigned_at?->format('Y-m') === $monthKey);
-            $resolvedTickets = $tickets->filter(fn (Ticket $ticket) => $ticket->resolved_at?->format('Y-m') === $monthKey);
-            $closedTickets = $tickets->filter(fn (Ticket $ticket) => $ticket->closed_at?->format('Y-m') === $monthKey);
+            $assignedCount = $tickets
+                ->filter(fn (Ticket $ticket) => $ticket->assigned_at?->format('Y-m') === $monthKey)
+                ->count();
+
+            $resolvedTicketIds = $statusLogs
+                ->filter(fn (TicketStatusLog $log) => $log->newStatus?->code === 'resolved' && $log->created_at?->format('Y-m') === $monthKey)
+                ->pluck('ticket_id')
+                ->unique();
+
+            $closedTicketIds = $statusLogs
+                ->filter(fn (TicketStatusLog $log) => $log->newStatus?->code === 'closed' && $log->created_at?->format('Y-m') === $monthKey)
+                ->pluck('ticket_id')
+                ->unique();
+
+            $monthlyRatedTickets = $tickets
+                ->filter(function (Ticket $ticket) use ($monthKey, $staffMember) {
+                    return $ticket->assigned_to === $staffMember->id
+                        && $ticket->feedback?->submitted_at?->format('Y-m') === $monthKey;
+                })
+                ->values();
 
             return [
                 'label' => $month['label'],
-                'assigned' => $monthTickets->count(),
-                'resolved' => $resolvedTickets->count(),
-                'closed' => $closedTickets->count(),
-                'rating' => $this->averageCustomerRating($resolvedTickets),
+                'assigned' => $assignedCount,
+                'resolved' => $resolvedTicketIds->count(),
+                'closed' => $closedTicketIds->count(),
+                'rating' => $this->averageCustomerRating($monthlyRatedTickets),
             ];
         })->all();
     }

@@ -51,13 +51,23 @@
                 <h2 class="h5">Status History</h2>
                 <div class="table-responsive">
                     <table class="table">
-                        <thead><tr><th>Old Status</th><th>New Status</th><th>Changed</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th>Old Status</th>
+                                <th>New Status</th>
+                                <th>Changed By</th>
+                                <th>Changed</th>
+                                <th>TAT</th>
+                            </tr>
+                        </thead>
                         <tbody>
-                            @foreach ($ticket->statusLogs as $log)
+                            @foreach ($statusHistory as $history)
                                 <tr>
-                                    <td>{{ $log->oldStatus?->name ?? 'New Ticket' }}</td>
-                                    <td>{{ $log->newStatus?->name }}</td>
-                                    <td>{{ $log->created_at->format('d M Y H:i') }}</td>
+                                    <td>{{ $history['old_status'] }}</td>
+                                    <td>{{ $history['new_status'] }}</td>
+                                    <td>{{ $history['changed_by'] }}</td>
+                                    <td>{{ $history['changed_at']->format('d M Y H:i') }}</td>
+                                    <td>{{ $history['tat'] }}</td>
                                 </tr>
                             @endforeach
                         </tbody>

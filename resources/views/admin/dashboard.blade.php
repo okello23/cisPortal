@@ -105,10 +105,24 @@
                     </p>
                     <p class="text-muted small mb-0 mt-2">First response time is measured from ticket assignment to the first staff action recorded by a comment or workflow status change. Current backlog counts assigned tickets that are still open and past their expected resolution date.</p>
                 </div>
-                <div class="d-flex gap-2 flex-wrap">
-                    <a href="{{ route('dashboard.support-performance.export', ['format' => 'csv']) }}" class="btn btn-outline-dark rounded-pill px-4">Download CSV</a>
-                    <a href="{{ route('dashboard.support-performance.export', ['format' => 'xls']) }}" class="btn btn-outline-dark rounded-pill px-4">Download XLS</a>
-                    <a href="{{ route('dashboard.support-performance.export', ['format' => 'pdf']) }}" class="btn btn-dark rounded-pill px-4">Download PDF</a>
+                <div class="d-flex flex-column align-items-stretch gap-3">
+                    <form method="GET" action="{{ route('dashboard') }}" class="row g-2 align-items-end">
+                        <input type="hidden" name="tab" value="performance">
+                        <div class="col-12">
+                            <label class="form-label mb-1">Support Staff Filter</label>
+                            <select name="performance_staff_id" class="form-select" onchange="this.form.submit()">
+                                <option value="">All support staff</option>
+                                @foreach ($performance['filter_options']['staff'] as $staffOption)
+                                    <option value="{{ $staffOption->id }}" @selected((string) $performance['filters']['staff_id'] === (string) $staffOption->id)>{{ $staffOption->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </form>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="{{ route('dashboard.support-performance.export', ['format' => 'csv', 'performance_staff_id' => $performance['filters']['staff_id']]) }}" class="btn btn-outline-dark rounded-pill px-4">Download CSV</a>
+                        <a href="{{ route('dashboard.support-performance.export', ['format' => 'xls', 'performance_staff_id' => $performance['filters']['staff_id']]) }}" class="btn btn-outline-dark rounded-pill px-4">Download XLS</a>
+                        <a href="{{ route('dashboard.support-performance.export', ['format' => 'pdf', 'performance_staff_id' => $performance['filters']['staff_id']]) }}" class="btn btn-dark rounded-pill px-4">Download PDF</a>
+                    </div>
                 </div>
             </div>
 
@@ -182,6 +196,7 @@
                 @foreach ($performance['rows'] as $row)
                     <fieldset class="app-fieldset">
                         <legend>{{ $row['staff_name'] }} Monthly Performance Trends</legend>
+                        <p class="text-muted small mb-3">DB mapping: Assigned uses <code>tickets.assigned_at</code>. Resolved and Closed use <code>ticket_status_logs.created_at</code> for this staff member's status changes. Avg Rating uses <code>ticket_feedback.submitted_at</code>.</p>
                         <div class="table-responsive">
                             <table class="table table-bordered table-striped align-middle mb-0">
                                 <thead>

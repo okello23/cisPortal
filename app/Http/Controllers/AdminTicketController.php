@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Support\AuditService;
 use App\Support\TicketRecipientResolver;
 use Illuminate\Support\Collection;
+use Illuminate\Support\CarbonInterval;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -66,25 +67,29 @@ class AdminTicketController extends Controller
         $this->authorizeTicket($ticket);
         $user = Auth::user();
 
+        $ticket->load([
+            'system',
+            'module',
+            'designation',
+            'region',
+            'facility',
+            'department',
+            'issueType',
+            'priorityLevel',
+            'status',
+            'assignedStaff',
+            'feedback',
+            'resolutionCategory',
+            'closureReason',
+            'comments.author',
+            'statusLogs' => fn ($query) => $query
+                ->with(['oldStatus', 'newStatus', 'changedBy'])
+                ->orderBy('created_at'),
+        ]);
+
         return view('admin.tickets.show', [
-            'ticket' => $ticket->load([
-                'system',
-                'module',
-                'designation',
-                'region',
-                'facility',
-                'department',
-                'issueType',
-                'priorityLevel',
-                'status',
-                'assignedStaff',
-                'feedback',
-                'resolutionCategory',
-                'closureReason',
-                'comments.author',
-                'statusLogs.oldStatus',
-                'statusLogs.newStatus',
-            ]),
+            'ticket' => $ticket,
+            'statusHistory' => $this->buildStatusHistory($ticket),
             'statuses' => $this->availableStatusesFor($user),
             'staff' => $this->assignableUsersFor($user, $ticket),
             'resolutionCategories' => ResolutionCategory::query()->where('active', true)->orderBy('sort_order')->get(),
@@ -314,6 +319,57 @@ class AdminTicketController extends Controller
         return $events
             ->sortByDesc(fn (array $event) => $event['timestamp'])
             ->values();
+    }
+
+    private function buildStatusHistory(Ticket $ticket): Collection
+    {
+        $previousTimestamp = $ticket->created_at;
+
+        return $ticket->statusLogs->map(function (TicketStatusLog $log) use (&$previousTimestamp) {
+            $changedAt = $log->created_at;
+            $tat = $previousTimestamp
+                ? $this->formatTurnaroundTime($previousTimestamp->diff($changedAt))
+                : 'N/A';
+
+            $previousTimestamp = $changedAt;
+
+            return [
+                'old_status' => $log->oldStatus?->name ?? 'New Ticket',
+                'new_status' => $log->newStatus?->name ?? 'N/A',
+                'changed_at' => $changedAt,
+                'changed_by' => $log->changedBy?->name ?? 'System',
+                'tat' => $tat,
+            ];
+        });
+    }
+
+    private function formatTurnaroundTime(\DateInterval $interval): string
+    {
+        $parts = [];
+        $units = [
+            'd' => 'd',
+            'h' => 'h',
+            'i' => 'm',
+            's' => 's',
+        ];
+
+        foreach ($units as $property => $suffix) {
+            $value = $interval->{$property};
+
+            if ($value > 0) {
+                $parts[] = $value.$suffix;
+            }
+
+            if (count($parts) === 2) {
+                break;
+            }
+        }
+
+        if ($interval->y > 0 || $interval->m > 0) {
+            return CarbonInterval::instance($interval)->cascade()->forHumans(short: true);
+        }
+
+        return $parts !== [] ? implode(' ', $parts) : '0s';
     }
 
     private function detailsForAuditLog(AuditLog $log): string
