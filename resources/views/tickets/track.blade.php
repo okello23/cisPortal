@@ -32,7 +32,7 @@
                                 <p class="text-uppercase text-muted small mb-1">Ticket Number</p>
                                 <h2 class="h3 mb-0">{{ $ticket->ticket_number }}</h2>
                             </div>
-                            <span class="badge text-bg-info fs-6">{{ $ticket->status?->name }}</span>
+                            <span class="badge text-bg-{{ $ticket->status?->color ?? 'secondary' }} fs-6">{{ $ticket->status?->name }}</span>
                         </div>
 
                         <div class="row g-3">

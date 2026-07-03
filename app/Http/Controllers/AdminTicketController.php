@@ -124,10 +124,9 @@ class AdminTicketController extends Controller
             'expected_resolution_date' => ['nullable', 'date'],
             'resolution_category_id' => ['nullable', 'exists:resolution_categories,id'],
             'closure_reason_id' => ['nullable', 'exists:closure_reasons,id'],
-            'resolution_summary' => ['nullable', 'string'],
-            'comment' => ['nullable', 'string'],
-            'comment_type' => ['nullable', 'in:public,internal'],
-            'training_recommended' => ['nullable', 'boolean'],
+            'work_done' => ['nullable', 'string'],
+            'recommendations' => ['nullable', 'string'],
+            'challenges_faced' => ['nullable', 'string'],
         ]);
 
         $user = $request->user();
@@ -141,6 +140,23 @@ class AdminTicketController extends Controller
         $oldStatusId = $ticket->status_id;
         $oldAssignedTo = $ticket->assigned_to;
         $ticket->fill($validated);
+
+        if ($status->code !== 'resolved') {
+            $ticket->resolution_category_id = null;
+        }
+
+        if ($status->code !== 'closed') {
+            $ticket->closure_reason_id = null;
+        }
+
+        if (in_array($status->code, ['resolved', 'closed'], true)) {
+            $ticket->resolution_summary = $validated['work_done'] ?? null;
+        } else {
+            $ticket->work_done = null;
+            $ticket->recommendations = null;
+            $ticket->challenges_faced = null;
+            $ticket->resolution_summary = null;
+        }
 
         if ($oldAssignedTo !== $ticket->assigned_to) {
             $ticket->assigned_at = now();
@@ -162,17 +178,7 @@ class AdminTicketController extends Controller
             $ticket->closed_at ??= now();
         }
 
-        $ticket->training_recommended = $request->boolean('training_recommended');
         $ticket->save();
-
-        if ($request->filled('comment')) {
-            TicketComment::query()->create([
-                'ticket_id' => $ticket->id,
-                'comment' => $validated['comment'],
-                'comment_type' => $validated['comment_type'] ?? 'internal',
-                'created_by' => $user->id,
-            ]);
-        }
 
         if ($status->code === 'escalated' && $assignee) {
             TicketComment::query()->create([
@@ -475,6 +481,36 @@ class AdminTicketController extends Controller
             throw ValidationException::withMessages([
                 'assigned_to' => 'Select a developer, ICT manager, or software development supervisor to receive the escalation.',
             ]);
+        }
+
+        $payload = request();
+
+        if ($status->code === 'resolved') {
+            throw_if(! $payload->filled('resolution_category_id'), ValidationException::withMessages([
+                'resolution_category_id' => 'Choose a resolution category when resolving a ticket.',
+            ]));
+        }
+
+        if ($status->code === 'closed') {
+            throw_if(! $payload->filled('closure_reason_id'), ValidationException::withMessages([
+                'closure_reason_id' => 'Choose a closure reason when closing a ticket.',
+            ]));
+        }
+
+        if (in_array($status->code, ['resolved', 'closed'], true)) {
+            $messages = [];
+
+            if (! $payload->filled('work_done')) {
+                $messages['work_done'] = 'Work done is required when resolving or closing a ticket.';
+            }
+
+            if (! $payload->filled('recommendations')) {
+                $messages['recommendations'] = 'Recommendations are required when resolving or closing a ticket.';
+            }
+
+            if ($messages !== []) {
+                throw ValidationException::withMessages($messages);
+            }
         }
     }
 }

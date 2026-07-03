@@ -9,7 +9,7 @@
                         <p class="text-uppercase text-muted fw-semibold small mb-1">Customer Satisfaction Survey</p>
                         <h1 class="h3 mb-0">Rate support for {{ $ticket->ticket_number }}</h1>
                     </div>
-                    <span class="badge text-bg-info fs-6">{{ $ticket->status?->name }}</span>
+                    <span class="badge text-bg-{{ $ticket->status?->color ?? 'secondary' }} fs-6">{{ $ticket->status?->name }}</span>
                 </div>
 
                 <div class="row g-3 mb-4">

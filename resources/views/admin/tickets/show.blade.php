@@ -9,7 +9,7 @@
                         <p class="text-uppercase text-muted fw-semibold small mb-1">Ticket Details</p>
                         <h1 class="h3 mb-0">{{ $ticket->ticket_number }}</h1>
                     </div>
-                    <span class="badge text-bg-info fs-6">{{ $ticket->status->name }}</span>
+                    <span class="badge text-bg-{{ $ticket->status->color ?? 'secondary' }} fs-6">{{ $ticket->status->name }}</span>
                 </div>
 
                 <div class="row g-3">
@@ -28,6 +28,9 @@
                     <div class="col-md-6"><strong>Priority:</strong> {{ $ticket->priorityLevel->name }}</div>
                     <div class="col-12"><strong>Description:</strong><br>{{ $ticket->description }}</div>
                     <div class="col-12"><strong>Resolution Summary:</strong><br>{{ $ticket->resolution_summary ?? 'No resolution summary yet.' }}</div>
+                    <div class="col-12"><strong>Work Done:</strong><br>{{ $ticket->work_done ?? 'Not recorded yet.' }}</div>
+                    <div class="col-12"><strong>Recommendations:</strong><br>{{ $ticket->recommendations ?? 'Not recorded yet.' }}</div>
+                    <div class="col-12"><strong>Challenges Faced:</strong><br>{{ $ticket->challenges_faced ?? 'No challenges recorded.' }}</div>
                     <div class="col-12">
                         <strong>Customer Feedback:</strong><br>
                         @if ($ticket->feedback)
@@ -78,9 +81,9 @@
                     @method('PUT')
                     <div class="col-12">
                         <label class="form-label">Status</label>
-                        <select name="status_id" class="form-select" required>
+                        <select name="status_id" class="form-select" id="status_id" required>
                             @foreach ($statuses as $status)
-                                <option value="{{ $status->id }}" @selected($ticket->status_id == $status->id)>{{ $status->name }}</option>
+                                <option value="{{ $status->id }}" data-status-code="{{ $status->code }}" @selected($ticket->status_id == $status->id)>{{ $status->name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -93,7 +96,11 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-12">
+                        <label class="form-label">Expected Resolution Date</label>
+                        <input type="date" name="expected_resolution_date" class="form-control" value="{{ optional($ticket->expected_resolution_date)->toDateString() }}">
+                    </div>
+                    <div class="col-md-6 workflow-field workflow-field--resolved">
                         <label class="form-label">Resolution Category</label>
                         <select name="resolution_category_id" class="form-select">
                             <option value="">Select</option>
@@ -102,7 +109,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-6 workflow-field workflow-field--closed">
                         <label class="form-label">Closure Reason</label>
                         <select name="closure_reason_id" class="form-select">
                             <option value="">Select</option>
@@ -111,30 +118,17 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-12">
-                        <label class="form-label">Expected Resolution Date</label>
-                        <input type="date" name="expected_resolution_date" class="form-control" value="{{ optional($ticket->expected_resolution_date)->toDateString() }}">
+                    <div class="col-12 workflow-field workflow-field--resolved workflow-field--closed">
+                        <label class="form-label">Work Done <span class="text-danger">*</span></label>
+                        <textarea name="work_done" rows="3" class="form-control">{{ old('work_done', $ticket->work_done) }}</textarea>
                     </div>
-                    <div class="col-12">
-                        <label class="form-label">Resolution Summary</label>
-                        <textarea name="resolution_summary" rows="3" class="form-control">{{ $ticket->resolution_summary }}</textarea>
+                    <div class="col-12 workflow-field workflow-field--resolved workflow-field--closed">
+                        <label class="form-label">Recommendations <span class="text-danger">*</span></label>
+                        <textarea name="recommendations" rows="3" class="form-control">{{ old('recommendations', $ticket->recommendations) }}</textarea>
                     </div>
-                    <div class="col-12">
-                        <label class="form-label">Comment / Note</label>
-                        <textarea name="comment" rows="3" class="form-control"></textarea>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Comment Visibility</label>
-                        <select name="comment_type" class="form-select">
-                            <option value="internal">Internal</option>
-                            <option value="public">Public</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6 d-flex align-items-end">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="training_recommended" id="training_recommended" value="1" @checked($ticket->training_recommended)>
-                            <label class="form-check-label" for="training_recommended">Training Recommended</label>
-                        </div>
+                    <div class="col-12 workflow-field workflow-field--resolved workflow-field--closed">
+                        <label class="form-label">Challenges Faced</label>
+                        <textarea name="challenges_faced" rows="3" class="form-control">{{ old('challenges_faced', $ticket->challenges_faced) }}</textarea>
                     </div>
                     <div class="col-12">
                         <button class="btn btn-dark rounded-pill px-4">Save Update</button>
@@ -159,3 +153,31 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const statusSelect = document.getElementById('status_id');
+
+            if (!statusSelect) {
+                return;
+            }
+
+            const toggleWorkflowFields = () => {
+                const selectedOption = statusSelect.options[statusSelect.selectedIndex];
+                const statusCode = selectedOption?.dataset.statusCode || '';
+
+                document.querySelectorAll('.workflow-field').forEach((field) => {
+                    const showResolved = statusCode === 'resolved' && field.classList.contains('workflow-field--resolved');
+                    const showClosed = statusCode === 'closed' && field.classList.contains('workflow-field--closed');
+                    const shouldShow = showResolved || showClosed;
+
+                    field.style.display = shouldShow ? '' : 'none';
+                });
+            };
+
+            statusSelect.addEventListener('change', toggleWorkflowFields);
+            toggleWorkflowFields();
+        });
+    </script>
+@endpush
