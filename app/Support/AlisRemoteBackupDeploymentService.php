@@ -123,6 +123,12 @@ class AlisRemoteBackupDeploymentService
         if ((int) config('alis_remote_backup_keys.port', 0) <= 0) {
             throw new RuntimeException('A-LIS remote backup deployment is missing a valid SSH port.');
         }
+
+        $identityFile = config('alis_remote_backup_keys.identity_file');
+
+        if (filled($identityFile) && ! is_file((string) $identityFile)) {
+            throw new RuntimeException('A-LIS remote backup deployment SSH identity file was not found.');
+        }
     }
 
     private function pushAuthorizedKeys(Collection $activeKeys): void
@@ -138,14 +144,13 @@ class AlisRemoteBackupDeploymentService
         $remote = config('alis_remote_backup_keys.user').'@'.config('alis_remote_backup_keys.host');
         $remoteTempPath = (string) config('alis_remote_backup_keys.remote_temp_path');
         $port = (string) config('alis_remote_backup_keys.port', 22);
+        $identityFile = config('alis_remote_backup_keys.identity_file');
+        $sshOptions = $this->buildSshOptions($port, $identityFile);
 
         $copy = Process::timeout((int) config('alis_remote_backup_keys.process_timeout', 30))
             ->run([
                 'scp',
-                '-P',
-                $port,
-                '-o',
-                'BatchMode=yes',
+                ...$sshOptions['scp'],
                 $tempFile,
                 $remote.':'.$remoteTempPath,
             ]);
@@ -158,10 +163,7 @@ class AlisRemoteBackupDeploymentService
         $install = Process::timeout((int) config('alis_remote_backup_keys.process_timeout', 30))
             ->run([
                 'ssh',
-                '-p',
-                $port,
-                '-o',
-                'BatchMode=yes',
+                ...$sshOptions['ssh'],
                 $remote,
                 (string) config('alis_remote_backup_keys.install_command'),
                 $remoteTempPath,
@@ -172,5 +174,21 @@ class AlisRemoteBackupDeploymentService
         if ($install->failed()) {
             throw new RuntimeException(trim($install->errorOutput()) ?: 'Failed to install authorized_keys on the backup server.');
         }
+    }
+
+    private function buildSshOptions(string $port, mixed $identityFile): array
+    {
+        $ssh = ['-p', $port, '-o', 'BatchMode=yes'];
+        $scp = ['-P', $port, '-o', 'BatchMode=yes'];
+
+        if (filled($identityFile)) {
+            $ssh = [...$ssh, '-i', (string) $identityFile];
+            $scp = [...$scp, '-i', (string) $identityFile];
+        }
+
+        return [
+            'ssh' => $ssh,
+            'scp' => $scp,
+        ];
     }
 }

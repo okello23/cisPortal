@@ -5,6 +5,7 @@ return [
     'host' => env('BACKUP_SERVER_HOST'),
     'port' => (int) env('BACKUP_SERVER_PORT', 22),
     'user' => env('BACKUP_SERVER_USER'),
+    'identity_file' => env('BACKUP_SSH_IDENTITY_FILE'),
     'authorized_keys_path' => env('BACKUP_AUTHORIZED_KEYS_PATH'),
     'authorized_keys_owner' => env('BACKUP_AUTHORIZED_KEYS_OWNER'),
     'authorized_keys_group' => env('BACKUP_AUTHORIZED_KEYS_GROUP'),
