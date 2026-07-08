@@ -119,6 +119,10 @@ class AlisRemoteBackupDeploymentService
                 throw new RuntimeException("A-LIS remote backup deployment is missing configuration for {$key}.");
             }
         }
+
+        if ((int) config('alis_remote_backup_keys.port', 0) <= 0) {
+            throw new RuntimeException('A-LIS remote backup deployment is missing a valid SSH port.');
+        }
     }
 
     private function pushAuthorizedKeys(Collection $activeKeys): void
@@ -133,10 +137,13 @@ class AlisRemoteBackupDeploymentService
 
         $remote = config('alis_remote_backup_keys.user').'@'.config('alis_remote_backup_keys.host');
         $remoteTempPath = (string) config('alis_remote_backup_keys.remote_temp_path');
+        $port = (string) config('alis_remote_backup_keys.port', 22);
 
         $copy = Process::timeout((int) config('alis_remote_backup_keys.process_timeout', 30))
             ->run([
                 'scp',
+                '-P',
+                $port,
                 '-o',
                 'BatchMode=yes',
                 $tempFile,
@@ -151,6 +158,8 @@ class AlisRemoteBackupDeploymentService
         $install = Process::timeout((int) config('alis_remote_backup_keys.process_timeout', 30))
             ->run([
                 'ssh',
+                '-p',
+                $port,
                 '-o',
                 'BatchMode=yes',
                 $remote,

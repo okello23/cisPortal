@@ -105,6 +105,7 @@ class AlisRemoteBackupKeysManagerTest extends TestCase
         ]);
 
         config()->set('alis_remote_backup_keys.host', '10.200.0.160');
+        config()->set('alis_remote_backup_keys.port', 865);
         config()->set('alis_remote_backup_keys.user', 'cis-backup-admin');
         config()->set('alis_remote_backup_keys.install_command', 'sudo /usr/local/bin/install_alis_authorized_keys.sh');
         config()->set('alis_remote_backup_keys.remote_temp_path', '/tmp/authorized_keys.generated');
