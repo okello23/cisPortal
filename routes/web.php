@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ManagerListController;
 use App\Http\Controllers\PublicDashboardController;
 use App\Http\Controllers\PublicTicketController;
+use App\Http\Controllers\TicketAttachmentController;
 use App\Http\Controllers\TicketFeedbackController;
 use App\Http\Controllers\TicketTrackingController;
 use App\Http\Controllers\UserManagementController;
@@ -18,6 +19,7 @@ Route::post('/report', [PublicTicketController::class, 'store'])->name('tickets.
 
 Route::get('/track', [TicketTrackingController::class, 'create'])->name('tickets.track');
 Route::post('/track', [TicketTrackingController::class, 'search'])->name('tickets.track.search');
+Route::get('/attachments/{ticket}', [TicketAttachmentController::class, 'show'])->middleware('signed')->name('tickets.attachments.show');
 Route::get('/track/{ticket}/feedback', [TicketFeedbackController::class, 'create'])->middleware('signed')->name('tickets.feedback.show');
 Route::post('/track/{ticket}/feedback', [TicketFeedbackController::class, 'store'])->middleware('signed')->name('tickets.feedback.store');
 

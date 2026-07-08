@@ -127,6 +127,7 @@ class AdminTicketController extends Controller
             'status_id' => ['required', 'exists:ticket_statuses,id'],
             'assigned_to' => ['nullable', 'exists:users,id'],
             'expected_resolution_date' => ['nullable', 'date'],
+            'comment' => ['nullable', 'string'],
             'resolution_category_id' => ['nullable', 'exists:resolution_categories,id'],
             'closure_reason_id' => ['nullable', 'exists:closure_reasons,id'],
             'work_done' => ['nullable', 'string'],
@@ -168,7 +169,14 @@ class AdminTicketController extends Controller
             $ticket->last_reminder_sent_at = null;
         }
 
-        if ($oldAssignedTo !== $ticket->assigned_to && in_array($status->code, ['new', 'reopened'], true)) {
+        $isDashboardAssignment = $request->boolean('assignment_modal')
+            && $assignee !== null
+            && $oldAssignedTo !== $assignee->id;
+
+        if ($isDashboardAssignment) {
+            $status = TicketStatus::query()->where('code', 'assigned')->firstOrFail();
+            $ticket->status_id = $status->id;
+        } elseif ($oldAssignedTo !== $ticket->assigned_to && in_array($status->code, ['new', 'reopened'], true)) {
             $status = TicketStatus::query()->where('code', 'assigned')->firstOrFail();
             $ticket->status_id = $status->id;
         }
@@ -194,6 +202,15 @@ class AdminTicketController extends Controller
             ]);
         }
 
+        if ($oldAssignedTo !== $ticket->assigned_to && $request->filled('comment')) {
+            TicketComment::query()->create([
+                'ticket_id' => $ticket->id,
+                'comment' => $request->string('comment')->trim()->toString(),
+                'comment_type' => 'internal',
+                'created_by' => $user->id,
+            ]);
+        }
+
         if ($oldStatusId !== $ticket->status_id) {
             TicketStatusLog::query()->create([
                 'ticket_id' => $ticket->id,
@@ -203,34 +220,52 @@ class AdminTicketController extends Controller
             ]);
         }
 
-        $this->auditService->log('ticket.updated', $ticket, ['status_id' => $oldStatusId, 'assigned_to' => $oldAssignedTo], $ticket->fresh()->toArray(), $user->id, $request);
+        $persistedTicket = $ticket->fresh();
 
-        $freshTicket = $ticket->fresh(['system', 'status', 'assignedStaff', 'priorityLevel']);
+        $this->auditService->log('ticket.updated', $ticket, ['status_id' => $oldStatusId, 'assigned_to' => $oldAssignedTo], $persistedTicket?->toArray(), $user->id, $request);
+
+        $mailTicket = Ticket::query()
+            ->with(['system', 'status', 'assignedStaff', 'priorityLevel'])
+            ->findOrFail($ticket->getKey());
 
         if ($oldAssignedTo !== $ticket->assigned_to && $ticket->assignedStaff?->email) {
             if ($status->code === 'escalated') {
                 $cc = $this->ticketRecipientResolver->escalationCcEmails($ticket->assignedStaff->email);
 
-                rescue(function () use ($freshTicket, $user, $cc) {
-                    $mailer = Mail::to($freshTicket->assignedStaff->email);
+                dispatch(function () use ($mailTicket, $user, $cc) {
+                    rescue(function () use ($mailTicket, $user, $cc) {
+                        $mailer = Mail::to($mailTicket->assignedStaff->email);
 
-                    if ($cc !== []) {
-                        $mailer->cc($cc);
-                    }
+                        if ($cc !== []) {
+                            $mailer->cc($cc);
+                        }
 
-                    $mailer->send(new TicketEscalatedMail($freshTicket, $user));
-                }, report: false);
+                        $mailer->send(new TicketEscalatedMail($mailTicket, $user));
+                    }, report: false);
+                })->afterResponse();
             } else {
-                rescue(fn () => Mail::to($freshTicket->assignedStaff->email)->send(new TicketWorkAssignmentMail($freshTicket)), report: false);
+                dispatch(function () use ($mailTicket) {
+                    rescue(fn () => Mail::to($mailTicket->assignedStaff->email)->send(new TicketWorkAssignmentMail($mailTicket)), report: false);
+                })->afterResponse();
             }
         }
 
         if ($ticket->email && $oldAssignedTo !== $ticket->assigned_to && $ticket->assignedStaff) {
-            rescue(fn () => Mail::to($ticket->email)->send(new TicketAssignedMail($freshTicket)), report: false);
+            dispatch(function () use ($ticket, $mailTicket) {
+                rescue(fn () => Mail::to($ticket->email)->send(new TicketAssignedMail($mailTicket)), report: false);
+            })->afterResponse();
         }
 
         if ($ticket->email && $oldStatusId !== $ticket->status_id) {
-            rescue(fn () => Mail::to($ticket->email)->send(new TicketStatusUpdatedMail($freshTicket)), report: false);
+            dispatch(function () use ($ticket, $mailTicket) {
+                rescue(fn () => Mail::to($ticket->email)->send(new TicketStatusUpdatedMail($mailTicket)), report: false);
+            })->afterResponse();
+        }
+
+        if ($request->boolean('return_to_dashboard')) {
+            return redirect()
+                ->route('dashboard')
+                ->with('status', 'Ticket assigned successfully.');
         }
 
         return redirect()->route('admin.tickets.show', $ticket)->with('status', 'Ticket updated successfully.');
@@ -492,6 +527,8 @@ class AdminTicketController extends Controller
 
     private function validateWorkflowUpdate(Ticket $ticket, User $user, TicketStatus $status, ?User $assignee): void
     {
+        $payload = request();
+
         if ($assignee && ! $assignee->hasAnyRole([
             User::ROLE_ICT_SUPPORT_STAFF,
             User::ROLE_DEVELOPER,
@@ -504,6 +541,12 @@ class AdminTicketController extends Controller
         }
 
         if ($this->isWorkflowManager($user)) {
+            if ($assignee && ! $payload->filled('expected_resolution_date')) {
+                throw ValidationException::withMessages([
+                    'expected_resolution_date' => 'Expected resolution date is required when assigning a ticket.',
+                ]);
+            }
+
             if ($status->code === 'escalated' && ! $assignee) {
                 throw ValidationException::withMessages([
                     'assigned_to' => 'Choose the person receiving the escalation.',
@@ -538,8 +581,6 @@ class AdminTicketController extends Controller
                 'assigned_to' => 'Select a developer, ICT manager, or software development supervisor to receive the escalation.',
             ]);
         }
-
-        $payload = request();
 
         if ($status->code === 'resolved') {
             throw_if(! $payload->filled('resolution_category_id'), ValidationException::withMessages([

@@ -1,6 +1,15 @@
 @extends('layouts.app', ['title' => $ticket->ticket_number])
 
 @section('content')
+    @php
+        $isCompletedTicket = in_array($ticket->status?->code, ['resolved', 'closed'], true);
+        $completionLog = $ticket->statusLogs
+            ->filter(fn ($log) => in_array($log->newStatus?->code, ['resolved', 'closed'], true))
+            ->sortByDesc('created_at')
+            ->first();
+        $turnaroundInterval = ($ticket->status?->code === 'closed' ? $ticket->closed_at : $ticket->resolved_at)?->diff($ticket->created_at);
+    @endphp
+
     <div class="row g-4">
         <div class="col-lg-7">
             <div class="content-card bg-white p-4 mb-4">
@@ -21,12 +30,54 @@
                     <div class="col-md-6"><strong>System:</strong> {{ $ticket->system->name }}</div>
                     <div class="col-md-6"><strong>District:</strong> {{ $ticket->district_name ?? 'N/A' }}</div>
                     <div class="col-md-6"><strong>Issue Began:</strong> {{ optional($ticket->issue_started_at)->format('d M Y') ?? 'N/A' }}</div>
-                    <div class="col-md-6"><strong>Module:</strong> {{ $ticket->module?->name ?? 'N/A' }}</div>
+                    <!-- <div class="col-md-6"><strong>Module:</strong> {{ $ticket->module?->name ?? 'N/A' }}</div> -->
                     <div class="col-md-6"><strong>Region:</strong> {{ $ticket->region?->name ?? 'N/A' }}</div>
                     <div class="col-md-6"><strong>Facility:</strong> {{ $ticket->facility?->name ?? 'N/A' }}</div>
                     <div class="col-md-6"><strong>Department:</strong> {{ $ticket->department?->name ?? 'N/A' }}</div>
-                    <div class="col-md-6"><strong>Priority:</strong> {{ $ticket->priorityLevel->name }}</div>
-                    <div class="col-12"><strong>Description:</strong><br>{{ $ticket->description }}</div>
+                 <div class="col-md-6">
+                    <strong>Impact of Issue:</strong>
+                    @php
+                    $badgeColors = [
+                    'high'     => 'stats-badge stats-badge--red',
+                    'critical' => 'stats-badge stats-badge--red',
+                    'medium'   => 'stats-badge stats-badge--orange',
+                    ];
+                    $badgeClass = $badgeColors[strtolower($ticket->priorityLevel->name)] ?? 'stats-badge stats-badge--teal';
+                    @endphp
+                    <span class="{{ $badgeClass }}"> {{ ucfirst($ticket->priorityLevel->name) }} </span>
+                </div>
+  
+                    <div class="col-12"><strong>Issue Description:</strong><br>{{ $ticket->description }}</div>
+                    <div class="col-12">
+                        <strong>Attachment:</strong><br>
+                        @if ($ticket->hasAttachment())
+                            <a href="{{ $ticket->attachmentUrl() }}" target="_blank" rel="noopener">
+                                {{ $ticket->attachmentFilename() }}
+                            </a>
+
+                            @if ($ticket->hasImageAttachment())
+                                <div class="mt-3">
+                                    <img
+                                        src="{{ $ticket->attachmentUrl() }}"
+                                        alt="Ticket attachment preview"
+                                        class="img-fluid rounded-4 border"
+                                        style="max-height: 420px;"
+                                    >
+                                </div>
+                            @elseif ($ticket->hasPdfAttachment())
+                                <div class="mt-3">
+                                    <iframe
+                                        src="{{ $ticket->attachmentUrl() }}"
+                                        title="Ticket attachment preview"
+                                        class="w-100 rounded-4 border"
+                                        style="height: 420px;"
+                                    ></iframe>
+                                </div>
+                            @endif
+                        @else
+                            No attachment uploaded.
+                        @endif
+                    </div>
                     <div class="col-12"><strong>Resolution Summary:</strong><br>{{ $ticket->resolution_summary ?? 'No resolution summary yet.' }}</div>
                     <div class="col-12"><strong>Work Done:</strong><br>{{ $ticket->work_done ?? 'Not recorded yet.' }}</div>
                     <div class="col-12"><strong>Recommendations:</strong><br>{{ $ticket->recommendations ?? 'Not recorded yet.' }}</div>
@@ -78,6 +129,69 @@
 
         <div class="col-lg-5">
             <div class="content-card bg-white p-4 mb-4">
+                <h2 class="h5">Comments</h2>
+                @forelse ($ticket->comments as $comment)
+                    <div class="border rounded-4 p-3 mb-3">
+                        <div class="d-flex justify-content-between small text-muted mb-2">
+                            <span>{{ $comment->author?->name ?? 'System' }}</span>
+                            <span>{{ ucfirst($comment->comment_type) }} note</span>
+                        </div>
+                        <div>{{ $comment->comment }}</div>
+                    </div>
+                @empty
+                    <p class="text-muted mb-0">No comments added yet.</p>
+                @endforelse
+            </div>
+
+            <div class="content-card bg-white p-4">
+                @if ($isCompletedTicket)
+                    <h2 class="h5 mb-3">Resolution Highlights</h2>
+                    <p class="text-muted small mb-3">This ticket is already {{ $ticket->status->name }}. Key closure details are shown below.</p>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <strong>{{ $ticket->status->code === 'closed' ? 'Closed On' : 'Resolved On' }}:</strong><br>
+                            {{ optional($ticket->status->code === 'closed' ? $ticket->closed_at : $ticket->resolved_at)->format('d M Y H:i') ?? 'N/A' }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>{{ $ticket->status->code === 'closed' ? 'Closed By' : 'Resolved By' }}:</strong><br>
+                            {{ $completionLog?->changedBy?->name ?? $ticket->assignedStaff?->name ?? 'N/A' }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Handled By:</strong><br>
+                            {{ $ticket->assignedStaff?->name ?? 'N/A' }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Turnaround Time:</strong><br>
+                            {{ $turnaroundInterval ? \Carbon\CarbonInterval::instance($turnaroundInterval)->cascade()->forHumans(short: true) : 'N/A' }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Expected Resolution Date:</strong><br>
+                            {{ optional($ticket->expected_resolution_date)->format('d M Y') ?? 'N/A' }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Resolution Category:</strong><br>
+                            {{ $ticket->resolutionCategory?->name ?? 'N/A' }}
+                        </div>
+                        @if ($ticket->status->code === 'closed')
+                            <div class="col-md-6">
+                                <strong>Closure Reason:</strong><br>
+                                {{ $ticket->closureReason?->name ?? 'N/A' }}
+                            </div>
+                        @endif
+                        <div class="col-12">
+                            <strong>Work Done:</strong><br>
+                            {{ $ticket->work_done ?? 'Not recorded yet.' }}
+                        </div>
+                        <div class="col-12">
+                            <strong>Recommendations:</strong><br>
+                            {{ $ticket->recommendations ?? 'Not recorded yet.' }}
+                        </div>
+                        <div class="col-12">
+                            <strong>Challenges Faced:</strong><br>
+                            {{ $ticket->challenges_faced ?? 'No challenges recorded.' }}
+                        </div>
+                    </div>
+                @else
                 <h2 class="h5 mb-3">Update Ticket</h2>
                 <p class="text-muted small mb-3">
                     @if ($isWorkflowManager)
@@ -144,21 +258,7 @@
                         <button class="btn btn-dark rounded-pill px-4">Save Update</button>
                     </div>
                 </form>
-            </div>
-
-            <div class="content-card bg-white p-4">
-                <h2 class="h5">Comments</h2>
-                @forelse ($ticket->comments as $comment)
-                    <div class="border rounded-4 p-3 mb-3">
-                        <div class="d-flex justify-content-between small text-muted mb-2">
-                            <span>{{ $comment->author?->name ?? 'System' }}</span>
-                            <span>{{ ucfirst($comment->comment_type) }} note</span>
-                        </div>
-                        <div>{{ $comment->comment }}</div>
-                    </div>
-                @empty
-                    <p class="text-muted mb-0">No comments added yet.</p>
-                @endforelse
+                @endif
             </div>
         </div>
     </div>

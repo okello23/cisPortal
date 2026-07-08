@@ -44,6 +44,39 @@
                             <div class="col-md-6"><strong>Issue Began:</strong> {{ optional($ticket->issue_started_at)->format('d M Y') ?? 'N/A' }}</div>
                             <div class="col-md-6"><strong>Expected Resolution Date:</strong> {{ optional($ticket->expected_resolution_date)->format('d M Y') ?? 'Not yet set' }}</div>
                             <div class="col-12"><strong>Latest Update:</strong> {{ optional($ticket->updated_at)->format('d M Y H:i') }}</div>
+                            <div class="col-12"><strong>Description:</strong> {{ $ticket->description }}</div>
+                            <div class="col-12">
+                                <strong>Attachment:</strong>
+                                @if ($ticket->hasAttachment())
+                                    <div class="mt-2">
+                                        <a href="{{ $ticket->attachmentUrl() }}" target="_blank" rel="noopener">
+                                            {{ $ticket->attachmentFilename() }}
+                                        </a>
+                                    </div>
+
+                                    @if ($ticket->hasImageAttachment())
+                                        <div class="mt-3">
+                                            <img
+                                                src="{{ $ticket->attachmentUrl() }}"
+                                                alt="Ticket attachment preview"
+                                                class="img-fluid rounded-4 border"
+                                                style="max-height: 420px;"
+                                            >
+                                        </div>
+                                    @elseif ($ticket->hasPdfAttachment())
+                                        <div class="mt-3">
+                                            <iframe
+                                                src="{{ $ticket->attachmentUrl() }}"
+                                                title="Ticket attachment preview"
+                                                class="w-100 rounded-4 border"
+                                                style="height: 420px;"
+                                            ></iframe>
+                                        </div>
+                                    @endif
+                                @else
+                                    No attachment uploaded.
+                                @endif
+                            </div>
                             <div class="col-12"><strong>Resolution Summary:</strong> {{ $ticket->resolution_summary ?? 'Resolution details will appear here once available.' }}</div>
                         </div>
 

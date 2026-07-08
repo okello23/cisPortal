@@ -136,6 +136,11 @@
             border-color: rgba(123, 63, 108, 0.2);
             --badge-dot: #7b3f6c;
         }
+        .stats-badge--red {
+            background: rgba(222, 7, 7, 0.38);
+            border-color: rgba(255, 0, 0, 0.2);
+            --badge-dot: #ff0000;
+        }
 
         .table thead th {
             font-size: 0.82rem;
@@ -156,6 +161,7 @@
             border-color: #dc7d21 !important;
             color: #fff !important;
         }
+
     </style>
     @livewireStyles
     @stack('styles')
@@ -173,8 +179,8 @@
                         <a class="btn btn-cis-orange rounded-pill px-4" href="{{ route('tickets.create', [], false) }}">Log New Issue</a>
                     @endif
                     <a class="btn btn-outline-dark rounded-pill px-4" href="{{ route('tickets.track', [], false) }}">Track Ticket</a>
-                    <a class="btn btn-dark rounded-pill px-4" href="{{ auth()->check() ? route('dashboard', [], false) : route('login', [], false) }}">
-                        {{ auth()->check() ? 'ICT Dashboard' : 'Staff Login' }}
+                    <a class="btn btn-success rounded-pill px-4" href="{{ auth()->check() ? route('dashboard', [], false) : route('login', [], false) }}">
+                        {{ auth()->check() ? 'Home' : 'Staff Login' }}
                     </a>
                 </div>
             </div>

@@ -3,7 +3,7 @@
 @section('content')
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div>
-            <p class="text-uppercase text-muted fw-semibold small mb-1">Internal ICT Dashboard</p>
+            <p class="text-uppercase text-muted fw-semibold small mb-1">Home</p>
             <h1 class="h2 mb-0">Welcome, {{ auth()->user()->name }}</h1>
         </div>
         <form method="POST" action="{{ route('logout') }}">
@@ -14,9 +14,9 @@
 
     <div class="d-flex gap-2 flex-wrap mb-4">
         <a href="{{ route('dashboard') }}" class="btn rounded-pill px-4 {{ $activeTab === 'overview' ? 'btn-dark' : 'btn-outline-dark' }}">Overview</a>
-        <a href="{{ route('dashboard', ['tab' => 'performance']) }}" class="btn rounded-pill px-4 {{ $activeTab === 'performance' ? 'btn-dark' : 'btn-outline-dark' }}">Support Team Performance</a>
+        <a href="{{ route('dashboard', ['tab' => 'performance']) }}" class="btn rounded-pill px-4 {{ $activeTab === 'performance' ? 'btn-warning' : 'btn-outline-warning' }}">Support Team Performance</a>
         @if ($canViewManagerDashboard)
-            <a href="{{ route('dashboard', ['tab' => 'manager']) }}" class="btn rounded-pill px-4 {{ $activeTab === 'manager' ? 'btn-dark' : 'btn-outline-dark' }}">Manager Dashboard</a>
+            <a href="{{ route('dashboard', ['tab' => 'manager']) }}" class="btn rounded-pill px-4 {{ $activeTab === 'manager' ? 'btn-success' : 'btn-outline-success' }}">Manager Dashboard</a>
         @endif
     </div>
 
@@ -30,8 +30,8 @@
             ] as $label => $value)
                 <div class="col-md-3">
                     <div class="metric-card p-3">
-                        <div class="text-muted small">{{ $label }}</div>
                         <div class="fs-3 fw-bold">{{ $value }}</div>
+                        <div class="text-muted small">{{ $label }}</div>
                     </div>
                 </div>
             @endforeach
@@ -45,9 +45,15 @@
                         <a href="{{ route('admin.tickets.index') }}" class="btn btn-sm btn-dark rounded-pill">View All</a>
                     </div>
                     <div class="table-responsive">
-                        <table class="table align-middle">
+                        <table class="table align-middle table-striped table-sm">
                             <thead>
-                                <tr><th>Ticket</th><th>System</th><th>Status</th><th>Assigned</th></tr>
+                                <tr>
+                                    <th>Ticket</th>
+                                    <th>System</th>
+                                    <th>Status</th>
+                                    <th>Date Logged</th>
+                                    <th>Actions</th>
+                                </tr>
                             </thead>
                             <tbody>
                                 @foreach ($tickets as $ticket)
@@ -55,7 +61,26 @@
                                         <td><a href="{{ route('admin.tickets.show', $ticket) }}">{{ $ticket->ticket_number }}</a></td>
                                         <td>{{ $ticket->system->name }}</td>
                                         <td>{{ $ticket->status->name }}</td>
-                                        <td>{{ $ticket->assignedStaff?->name ?? 'Unassigned' }}</td>
+                                        <td>{{ $ticket->created_at->format('Y-m-d') }}</td>
+                                        <td>
+                                            <div class="d-flex flex-wrap gap-2">
+                                                <a href="{{ route('admin.tickets.show', $ticket) }}" class="btn btn-sm btn-outline-dark rounded-pill">View</a>
+                                                @if (auth()->user()->hasAnyRole([\App\Models\User::ROLE_ICT_ADMIN, \App\Models\User::ROLE_ICT_MANAGER, \App\Models\User::ROLE_ICT_SUPERVISOR]) && ! $ticket->assigned_to)
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-sm btn-outline-success rounded-pill"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#assignTicketModal"
+                                                        data-ticket-id="{{ $ticket->id }}"
+                                                        data-ticket-number="{{ $ticket->ticket_number }}"
+                                                        data-status-id="{{ $ticket->status_id }}"
+                                                        data-expected-date="{{ optional($ticket->expected_resolution_date)->toDateString() }}"
+                                                    >
+                                                        Assign
+                                                    </button>
+                                                @endif
+                                            </div>
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -81,7 +106,7 @@
                             'departments' => 'Departments',
                             'designations' => 'Designations',
                             'issue-types' => 'Issue Types',
-                            'priority-levels' => 'Priority Levels',
+                            'priority-levels' => 'Priority/Impact Levels',
                             'ticket-statuses' => 'Ticket Statuses',
                             'resolution-categories' => 'Resolution Categories',
                             'closure-reasons' => 'Closure Reasons',
@@ -139,8 +164,8 @@
                 ] as $label => $value)
                     <div class="col-md-3">
                         <div class="metric-card p-3">
-                            <div class="text-muted small">{{ $label }}</div>
                             <div class="fs-4 fw-bold">{{ $value }}</div>
+                            <div class="text-muted small">{{ $label }}</div>
                         </div>
                     </div>
                 @endforeach
@@ -532,4 +557,117 @@
             </div>
         </div>
     @endif
+
+    @if (auth()->user()->hasAnyRole([\App\Models\User::ROLE_ICT_ADMIN, \App\Models\User::ROLE_ICT_MANAGER, \App\Models\User::ROLE_ICT_SUPERVISOR]))
+        <div class="modal fade" id="assignTicketModal" tabindex="-1" aria-labelledby="assignTicketModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header border-0 pb-0">
+                        <div>
+                            <h2 class="h5 mb-0" id="assignTicketModalLabel">Assign Ticket</h2>
+                            <p class="text-muted small mb-0 mt-1">Fields marked with <span class="text-danger">*</span> are required.</p>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body pt-3">
+                        <form method="POST" action="" id="assignTicketForm" class="row g-3">
+                            @csrf
+                            @method('PUT')
+                            <input type="hidden" name="ticket_id" id="assignTicketId" value="{{ old('ticket_id') }}">
+                            <input type="hidden" name="status_id" id="assignTicketStatusId" value="{{ old('status_id') }}">
+                            <input type="hidden" name="return_to_dashboard" value="1">
+                            <input type="hidden" name="assignment_modal" value="1">
+
+                            <div class="col-12">
+                                <label class="form-label">Ticket</label>
+                                <input type="text" class="form-control" id="assignTicketNumber" readonly>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Assign To <span class="text-danger">*</span></label>
+                                <select name="assigned_to" id="assignTicketAssignee" class="form-select" required aria-required="true">
+                                    <option value="">Select support staff</option>
+                                    @foreach ($assignableSupportStaff as $person)
+                                        <option value="{{ $person->id }}" @selected((string) old('assigned_to') === (string) $person->id)>
+                                            {{ $person->name }}{{ $person->phone ? ' ('.$person->phone.')' : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="form-text">Choose the staff member who will handle this ticket.</div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Expected Resolution Date <span class="text-danger">*</span></label>
+                                <input type="date" name="expected_resolution_date" id="assignTicketExpectedDate" class="form-control" value="{{ old('expected_resolution_date') }}" required aria-required="true">
+                                <div class="form-text">Set the target date the requester should expect an update or resolution.</div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Comment</label>
+                                <textarea name="comment" class="form-control" rows="3" placeholder="Add an assignment note for the ticket record.">{{ old('comment') }}</textarea>
+                            </div>
+                            <div class="col-12 d-flex justify-content-end gap-2 pt-2">
+                                <button type="button" class="btn btn-outline-danger rounded-pill px-4 glyphicon glyphicon-remove" data-bs-dismiss="modal"> Close</button>
+                                <button type="submit" class="btn btn-outline-success rounded-pill px-4 glyphicon glyphicon-ok" id="assignTicketSubmit"> Assign Ticket</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 @endsection
+
+@push('scripts')
+    @if (auth()->user()->hasAnyRole([\App\Models\User::ROLE_ICT_ADMIN, \App\Models\User::ROLE_ICT_MANAGER, \App\Models\User::ROLE_ICT_SUPERVISOR]))
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const assignModal = document.getElementById('assignTicketModal');
+                const updateRouteTemplate = @json(route('admin.tickets.update', ['ticket' => '__TICKET__']));
+
+                if (!assignModal) {
+                    return;
+                }
+
+                const form = document.getElementById('assignTicketForm');
+                const ticketIdField = document.getElementById('assignTicketId');
+                const ticketNumberField = document.getElementById('assignTicketNumber');
+                const statusField = document.getElementById('assignTicketStatusId');
+                const expectedDateField = document.getElementById('assignTicketExpectedDate');
+                const submitButton = document.getElementById('assignTicketSubmit');
+
+                assignModal.addEventListener('show.bs.modal', (event) => {
+                    const trigger = event.relatedTarget;
+
+                    if (!trigger) {
+                        return;
+                    }
+
+                    form.action = updateRouteTemplate.replace('__TICKET__', trigger.dataset.ticketId || '');
+                    ticketIdField.value = trigger.dataset.ticketId || '';
+                    ticketNumberField.value = trigger.dataset.ticketNumber || '';
+                    statusField.value = trigger.dataset.statusId || '';
+
+                    if (!@json((bool) old('assignment_modal'))) {
+                        expectedDateField.value = trigger.dataset.expectedDate || '';
+                    }
+                });
+
+                form.addEventListener('submit', () => {
+                    if (!submitButton) {
+                        return;
+                    }
+
+                    submitButton.disabled = true;
+                    submitButton.textContent = ' Assigning...';
+                });
+
+                @if (old('assignment_modal'))
+                    form.action = "{{ route('admin.tickets.update', old('ticket_id', 0)) }}";
+                    ticketIdField.value = @json(old('ticket_id'));
+                    ticketNumberField.value = @json(collect($tickets)->firstWhere('id', (int) old('ticket_id'))?->ticket_number ?? 'Selected ticket');
+                    statusField.value = @json(old('status_id'));
+                    const modal = new bootstrap.Modal(assignModal);
+                    modal.show();
+                @endif
+            });
+        </script>
+    @endif
+@endpush

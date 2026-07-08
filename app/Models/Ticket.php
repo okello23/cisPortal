@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 
 class Ticket extends Model
@@ -154,5 +155,47 @@ class Ticket extends Model
     public function feedbackUrl(string $route = 'tickets.feedback.show'): string
     {
         return URL::signedRoute($route, ['ticket' => $this]);
+    }
+
+    public function hasAttachment(): bool
+    {
+        return filled($this->attachment_path);
+    }
+
+    public function attachmentUrl(): ?string
+    {
+        if (! $this->hasAttachment()) {
+            return null;
+        }
+
+        return URL::signedRoute('tickets.attachments.show', ['ticket' => $this]);
+    }
+
+    public function attachmentFilename(): ?string
+    {
+        if (! $this->hasAttachment()) {
+            return null;
+        }
+
+        return basename($this->attachment_path);
+    }
+
+    public function attachmentExtension(): ?string
+    {
+        if (! $this->hasAttachment()) {
+            return null;
+        }
+
+        return strtolower(pathinfo($this->attachment_path, PATHINFO_EXTENSION));
+    }
+
+    public function hasImageAttachment(): bool
+    {
+        return in_array($this->attachmentExtension(), ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'], true);
+    }
+
+    public function hasPdfAttachment(): bool
+    {
+        return $this->attachmentExtension() === 'pdf';
     }
 }

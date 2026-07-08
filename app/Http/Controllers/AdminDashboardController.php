@@ -45,6 +45,11 @@ class AdminDashboardController extends Controller
             'canViewManagerDashboard' => $canViewManagerDashboard,
             'tickets' => $query->latest()->limit(12)->get(),
             'staff' => User::query()->where('active', true)->orderBy('name')->get(),
+            'assignableSupportStaff' => User::query()
+                ->where('active', true)
+                ->where('role', User::ROLE_ICT_SUPPORT_STAFF)
+                ->orderBy('name')
+                ->get(),
             'metrics' => [
                 'assigned' => Ticket::query()->whereNotNull('assigned_to')->count(),
                 'in_progress' => Ticket::query()->whereHas('status', fn ($status) => $status->where('code', 'in_progress'))->count(),
