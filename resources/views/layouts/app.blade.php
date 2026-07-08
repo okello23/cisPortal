@@ -175,6 +175,18 @@
             </button>
             <div class="collapse navbar-collapse" id="mainNav">
                 <div class="ms-auto d-flex gap-2 align-items-center">
+                    @auth
+                        <div class="dropdown">
+                            <button class="btn btn-outline-dark rounded-pill px-4 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Infrastructure
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <a class="dropdown-item" href="{{ route('infrastructure.alis-remote-backup-keys.index', [], false) }}">A-LIS Remote Backup Keys</a>
+                                </li>
+                            </ul>
+                        </div>
+                    @endauth
                     @if (request()->routeIs('dashboard.public'))
                         <a class="btn btn-cis-orange rounded-pill px-4" href="{{ route('tickets.create', [], false) }}">Log New Issue</a>
                     @endif

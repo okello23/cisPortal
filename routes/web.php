@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AdminTicketController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Infrastructure\AlisRemoteBackupKeyController;
 use App\Http\Controllers\ManagerListController;
 use App\Http\Controllers\PublicDashboardController;
 use App\Http\Controllers\PublicTicketController;
@@ -41,6 +42,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/users', [UserManagementController::class, 'index'])->name('admin.users.index');
     Route::post('/users', [UserManagementController::class, 'store'])->name('admin.users.store');
     Route::put('/users/{user}', [UserManagementController::class, 'update'])->name('admin.users.update');
+    Route::get('/infrastructure/alis-remote-backup-keys', [AlisRemoteBackupKeyController::class, 'index'])->name('infrastructure.alis-remote-backup-keys.index');
     Route::get('/lists/{list}', [ManagerListController::class, 'index'])->name('lists.index');
     Route::post('/lists/{list}', [ManagerListController::class, 'store'])->name('lists.store');
     Route::put('/lists/{list}/{id}', [ManagerListController::class, 'update'])->name('lists.update');
