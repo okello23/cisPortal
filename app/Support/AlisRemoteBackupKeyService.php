@@ -24,21 +24,22 @@ class AlisRemoteBackupKeyService
             ->where('status', 'active')
             ->first();
 
-        if ($existing && ! $reason) {
+        $payload = $this->parsePublicKey($publicKeyInput, $facility->id, $existing?->id);
+        $isChangingKey = ! $existing || $existing->fingerprint !== $payload['fingerprint'];
+
+        if ($existing && $isChangingKey && ! $reason) {
             throw ValidationException::withMessages([
                 'reasonId' => 'Please provide a reason for updating the existing SSH key.',
             ]);
         }
 
-        if ($reason?->isOtherReason() && blank(trim((string) $comments))) {
+        if ($isChangingKey && $reason?->isOtherReason() && blank(trim((string) $comments))) {
             throw ValidationException::withMessages([
                 'comments' => 'Please specify the reason for this SSH key update.',
             ]);
         }
 
-        $payload = $this->parsePublicKey($publicKeyInput, $facility->id, $existing?->id);
-
-        return DB::transaction(function () use ($existing, $facility, $payload, $user, $reason, $comments) {
+        return DB::transaction(function () use ($existing, $facility, $payload, $user, $reason, $comments, $isChangingKey) {
             if (! $existing) {
                 $key = AlisRemoteBackupKey::query()->create([
                     'facility_id' => $facility->id,
@@ -55,6 +56,10 @@ class AlisRemoteBackupKeyService
                 $this->recordHistory($facility->id, 'created', null, $key, $user->id, null, null);
 
                 return $key;
+            }
+
+            if (! $isChangingKey) {
+                return $existing->fresh();
             }
 
             $oldValues = clone $existing;
@@ -129,11 +134,11 @@ class AlisRemoteBackupKeyService
             throw ValidationException::withMessages(['publicKey' => 'SSH public key type does not match the encoded key body.']);
         }
 
-        $normalizedKey = trim($keyType.' '.$keyBody.' '.trim((string) $keyComment));
         $fingerprint = 'SHA256:'.rtrim(base64_encode(hash('sha256', $decoded, true)), '=');
+        $normalizedKey = trim($keyType.' '.$keyBody.' '.trim((string) $keyComment));
 
         $duplicate = AlisRemoteBackupKey::query()
-            ->where('public_key', $normalizedKey)
+            ->where('fingerprint', $fingerprint)
             ->when($ignoreKeyId, fn ($query) => $query->where('id', '!=', $ignoreKeyId))
             ->when($facilityId, fn ($query) => $query->where('facility_id', '!=', $facilityId))
             ->exists();

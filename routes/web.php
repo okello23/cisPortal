@@ -43,6 +43,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/users', [UserManagementController::class, 'store'])->name('admin.users.store');
     Route::put('/users/{user}', [UserManagementController::class, 'update'])->name('admin.users.update');
     Route::get('/infrastructure/alis-remote-backup-keys', [AlisRemoteBackupKeyController::class, 'index'])->name('infrastructure.alis-remote-backup-keys.index');
+    Route::get('/infrastructure/alis-remote-backup-keys/{configuration}/download-script', [AlisRemoteBackupKeyController::class, 'downloadScript'])->name('infrastructure.alis-remote-backup-keys.download-script');
     Route::get('/lists/{list}', [ManagerListController::class, 'index'])->name('lists.index');
     Route::post('/lists/{list}', [ManagerListController::class, 'store'])->name('lists.store');
     Route::put('/lists/{list}/{id}', [ManagerListController::class, 'update'])->name('lists.update');

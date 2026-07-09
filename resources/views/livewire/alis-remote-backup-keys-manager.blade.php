@@ -11,33 +11,24 @@
         <div class="content-card bg-white p-4 p-lg-5 mb-4">
             <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
                 <div>
-                    <h2 class="h4 mb-1">Registered Backup Keys</h2>
-                    <p class="text-muted mb-0">Review facility SSH keys, update existing entries, and keep deployment state visible from one registry view.</p>
+                    <h2 class="h4 mb-1">Backup Configurations</h2>
+                    <p class="text-muted mb-0">Manage facility database backup settings, central server provisioning, and script downloads in one place.</p>
                 </div>
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-dark rounded-pill px-4" wire:click="openCreateModal">
-                        Add Key
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-success rounded-pill px-4"
-                        wire:click="deployKeys"
-                        wire:loading.attr="disabled"
-                        @disabled($pendingCount === 0)
-                    >
-                        Deploy Keys
+                        Add Backup Configuration
                     </button>
                 </div>
             </div>
 
             <div class="row g-3 mb-3">
                 <div class="col-12">
-                    <label class="form-label">Search Registered Keys</label>
+                    <label class="form-label">Search Backup Configurations</label>
                     <input
                         type="text"
                         class="form-control"
                         wire:model.live.debounce.250ms="keySearch"
-                        placeholder="Search by facility, district, region, code, or fingerprint"
+                        placeholder="Search by facility, district, region, code, or backup directory"
                     >
                 </div>
             </div>
@@ -47,48 +38,65 @@
                     <thead>
                         <tr>
                             <th>Facility</th>
-                            <th>Added By</th>
-                            <th>Date Added</th>
+                            <th>Backup Directory</th>
                             <th>Status</th>
+                            <th>Updated</th>
                             <th class="text-end">Action</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse ($keys as $key)
+                        @forelse ($configurations as $configuration)
                             <tr>
                                 <td>
-                                    <div class="fw-semibold">{{ $key->facility->name }}</div>
+                                    <div class="fw-semibold">{{ $configuration->facility->name }}</div>
                                     <div class="small text-muted">
-                                        {{ $key->facility->district_name ?: 'No district' }}
-                                        @if ($key->facility->region?->name)
-                                            | {{ $key->facility->region->name }}
+                                        {{ $configuration->facility->district_name ?: 'No district' }}
+                                        @if ($configuration->facility->region?->name)
+                                            | {{ $configuration->facility->region->name }}
                                         @endif
-                                        @if ($key->facility->code)
-                                            | {{ $key->facility->code }}
+                                        @if ($configuration->facility->code)
+                                            | {{ $configuration->facility->code }}
                                         @endif
                                     </div>
                                 </td>
-                                <td>{{ $key->creator?->name ?? 'System' }}</td>
-                                <td>{{ $key->created_at?->format('Y-m-d H:i') }}</td>
+                                <td class="font-monospace small">{{ $configuration->backup_directory_name }}</td>
                                 <td>
-                                    <span class="stats-badge {{ $key->status === 'active' ? 'stats-badge--teal' : 'stats-badge--slate' }}">
-                                        {{ $key->status === 'active' ? 'Active' : 'Deactivated' }}
-                                    </span>
+                                    @php
+                                        $badgeClass = match ($configuration->status) {
+                                            \App\Models\AlisBackupConfiguration::STATUS_PROVISIONED => 'stats-badge--teal',
+                                            \App\Models\AlisBackupConfiguration::STATUS_PROVISIONING_FAILED => 'stats-badge--red',
+                                            \App\Models\AlisBackupConfiguration::STATUS_DISABLED => 'stats-badge--slate',
+                                            default => 'stats-badge--orange',
+                                        };
+                                        $statusLabel = str_replace('_', ' ', ucfirst($configuration->status));
+                                    @endphp
+                                    <span class="stats-badge {{ $badgeClass }}">{{ $statusLabel }}</span>
                                 </td>
+                                <td>{{ $configuration->updated_at?->format('Y-m-d H:i') }}</td>
                                 <td class="text-end">
-                                    <div class="d-flex justify-content-end gap-2">
-                                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill" wire:click="openEditModal({{ $key->facility_id }})">
+                                    <div class="d-flex justify-content-end gap-2 flex-wrap">
+                                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill" wire:click="openEditModal({{ $configuration->facility_id }})">
                                             Edit
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" wire:click="toggleKeyStatus({{ $key->id }})">
-                                            {{ $key->status === 'active' ? 'Deactivate' : 'Activate' }}
+                                        @if ($configuration->status === \App\Models\AlisBackupConfiguration::STATUS_PROVISIONING_FAILED || $configuration->status === \App\Models\AlisBackupConfiguration::STATUS_PENDING_PROVISIONING)
+                                            <button type="button" class="btn btn-sm btn-outline-warning rounded-pill" wire:click="retryProvisioning({{ $configuration->id }})">
+                                                Retry Provisioning
+                                            </button>
+                                        @endif
+                                        @if ($configuration->status === \App\Models\AlisBackupConfiguration::STATUS_PROVISIONED)
+                                            <a href="{{ route('infrastructure.alis-remote-backup-keys.download-script', $configuration) }}" class="btn btn-sm btn-success rounded-pill">
+                                                Download Backup Script
+                                            </a>
+                                        @endif
+                                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" wire:click="toggleConfigurationStatus({{ $configuration->id }})">
+                                            {{ $configuration->status === \App\Models\AlisBackupConfiguration::STATUS_DISABLED ? 'Enable' : 'Disable' }}
                                         </button>
                                     </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="text-center text-muted py-4">No backup keys have been registered yet.</td>
+                                <td colspan="5" class="text-center text-muted py-4">No backup configurations have been saved yet.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -98,11 +106,11 @@
 
         <div class="content-card bg-white p-4">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                <h2 class="h5 mb-0">Audit History</h2>
+                <h2 class="h5 mb-0">SSH Key Audit History</h2>
                 @if ($selectedFacility)
                     <span class="small text-muted">{{ $selectedFacility->name }}</span>
                 @else
-                    <span class="small text-muted">Pick a key entry to inspect its history.</span>
+                    <span class="small text-muted">Pick a configuration entry to inspect its SSH key history.</span>
                 @endif
             </div>
 
@@ -139,7 +147,7 @@
 
     <div class="col-lg-5">
         <div class="content-card bg-white p-4 mb-4">
-            <h2 class="h5 mb-3">Current Key Status</h2>
+            <h2 class="h5 mb-3">Selected Configuration</h2>
             @if ($selectedFacility)
                 <div class="mb-3">
                     <div class="fw-semibold">{{ $selectedFacility->name }}</div>
@@ -154,40 +162,63 @@
                     </div>
                 </div>
 
-                @if ($selectedKey)
+                @if ($selectedConfiguration)
                     <dl class="row mb-0">
+                        <dt class="col-sm-5">Backup Directory</dt>
+                        <dd class="col-sm-7 font-monospace small">{{ $selectedConfiguration->backup_directory_name }}</dd>
                         <dt class="col-sm-5">Status</dt>
-                        <dd class="col-sm-7">{{ $selectedKey->status === 'active' ? 'Active' : 'Deactivated' }}</dd>
-                        <dt class="col-sm-5">Deployment</dt>
-                        <dd class="col-sm-7 text-capitalize">{{ $selectedKey->deployment_status }}</dd>
-                        <dt class="col-sm-5">Fingerprint</dt>
-                        <dd class="col-sm-7 font-monospace small">{{ $selectedKey->fingerprint }}</dd>
-                        <dt class="col-sm-5">Key Type</dt>
-                        <dd class="col-sm-7">{{ $selectedKey->key_type }}</dd>
-                        <dt class="col-sm-5">Comment</dt>
-                        <dd class="col-sm-7">{{ $selectedKey->key_comment ?: 'N/A' }}</dd>
+                        <dd class="col-sm-7 text-capitalize">{{ str_replace('_', ' ', $selectedConfiguration->status) }}</dd>
+                        <dt class="col-sm-5">DB Name</dt>
+                        <dd class="col-sm-7">{{ $selectedConfiguration->database_name }}</dd>
+                        <dt class="col-sm-5">DB Username</dt>
+                        <dd class="col-sm-7">{{ $selectedConfiguration->database_username }}</dd>
+                        <dt class="col-sm-5">Provisioned At</dt>
+                        <dd class="col-sm-7">{{ $selectedConfiguration->provisioned_at?->format('Y-m-d H:i') ?? 'N/A' }}</dd>
                     </dl>
+
+                    @if ($selectedConfiguration->last_provisioning_error)
+                        <div class="alert alert-danger rounded-4 mt-3 mb-0">{{ $selectedConfiguration->last_provisioning_error }}</div>
+                    @endif
+
+                    <div class="d-flex gap-2 flex-wrap mt-3">
+                        @if ($selectedConfiguration->status === \App\Models\AlisBackupConfiguration::STATUS_PROVISIONED)
+                            <a href="{{ route('infrastructure.alis-remote-backup-keys.download-script', $selectedConfiguration) }}" class="btn btn-success rounded-pill">
+                                Download Backup Script
+                            </a>
+                        @endif
+                        @if ($selectedConfiguration->status === \App\Models\AlisBackupConfiguration::STATUS_PROVISIONING_FAILED || $selectedConfiguration->status === \App\Models\AlisBackupConfiguration::STATUS_PENDING_PROVISIONING)
+                            <button type="button" class="btn btn-outline-warning rounded-pill" wire:click="retryProvisioning({{ $selectedConfiguration->id }})">
+                                Retry Provisioning
+                            </button>
+                        @endif
+                    </div>
                 @else
-                    <p class="text-muted mb-0">No SSH key is registered for this facility yet.</p>
+                    <p class="text-muted mb-0">No backup configuration is registered for this facility yet.</p>
                 @endif
             @else
-                <p class="text-muted mb-0">Choose a registry entry to inspect its current SSH key status.</p>
+                <p class="text-muted mb-0">Choose a configuration entry to inspect its current backup status.</p>
             @endif
         </div>
 
         <div class="content-card bg-white p-4 mb-4">
-            <h2 class="h5 mb-3">Deployment Status</h2>
+            <h2 class="h5 mb-3">Provisioning Overview</h2>
             <div class="row g-3 mb-3">
-                <div class="col-6">
+                <div class="col-4">
                     <div class="metric-card p-3 h-100">
                         <div class="fs-3 fw-bold">{{ $pendingCount }}</div>
-                        <div class="text-muted small">Pending Changes</div>
+                        <div class="text-muted small">Pending</div>
                     </div>
                 </div>
-                <div class="col-6">
+                <div class="col-4">
+                    <div class="metric-card p-3 h-100">
+                        <div class="fs-3 fw-bold">{{ $provisionedCount }}</div>
+                        <div class="text-muted small">Provisioned</div>
+                    </div>
+                </div>
+                <div class="col-4">
                     <div class="metric-card p-3 h-100">
                         <div class="fs-3 fw-bold">{{ $failedCount }}</div>
-                        <div class="text-muted small">Failed Keys</div>
+                        <div class="text-muted small">Failed</div>
                     </div>
                 </div>
             </div>
@@ -210,7 +241,7 @@
                     <div class="alert alert-danger rounded-4 mt-3 mb-0">{{ $latestDeployment->error_message }}</div>
                 @endif
             @else
-                <p class="text-muted mb-0">No deployment has been recorded yet.</p>
+                <p class="text-muted mb-0">No authorized_keys deployment has been recorded yet.</p>
             @endif
         </div>
     </div>
@@ -221,8 +252,8 @@
                 <div class="modal-content border-0 rounded-4">
                     <div class="modal-header border-0 px-4 pt-4">
                         <div>
-                            <h2 class="modal-title h4 mb-1">{{ $selectedKey ? 'Update SSH Key' : 'Add SSH Key' }}</h2>
-                            <p class="text-muted mb-0">Register a facility key and mark it for the next full deployment.</p>
+                            <h2 class="modal-title h4 mb-1">{{ $selectedConfiguration ? 'Update Backup Configuration' : 'Add Backup Configuration' }}</h2>
+                            <p class="text-muted mb-0">Save the facility backup settings, provision the central directory, and generate the facility backup script.</p>
                         </div>
                         <button type="button" class="btn-close" wire:click="closeKeyModal" aria-label="Close"></button>
                     </div>
@@ -239,7 +270,7 @@
 
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label">Region</label>
+                                <label class="form-label">Region <span class="text-danger">*</span></label>
                                 <select class="form-select" wire:model.live="regionId">
                                     <option value="">Select region</option>
                                     @foreach ($regions as $region)
@@ -249,7 +280,7 @@
                                 <div class="form-text">Used only to narrow the facility list.</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">District</label>
+                                <label class="form-label">District <span class="text-danger">*</span></label>
                                 <select class="form-select" wire:model.live="districtName" @disabled($regionId === '')>
                                     <option value="">Select district</option>
                                     @foreach ($districtOptions as $district)
@@ -261,7 +292,7 @@
                                 </div>
                             </div>
                             <div class="col-12">
-                                <label class="form-label">Facility</label>
+                                <label class="form-label">Facility <span class="text-danger">*</span></label>
                                 <select class="form-select" wire:model.live="facilityId" @disabled($districtName === '')>
                                     <option value="">Select facility</option>
                                     @foreach ($facilities as $facility)
@@ -274,8 +305,28 @@
                                     {{ $districtName !== '' ? 'Facilities are limited to the selected district.' : 'Choose a district first.' }}
                                 </div>
                             </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Backup Directory Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control font-monospace" value="{{ $backupDirectoryName }}" readonly>
+                                <div class="form-text">Generated automatically from the selected facility and validated again on save.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">A-LIS Database Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" wire:model="databaseName" placeholder="alis_db">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">A-LIS Database Username <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" wire:model="databaseUsername" placeholder="alis_user">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">A-LIS Database Password <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" wire:model="databasePassword" placeholder="{{ $selectedConfiguration ? 'Leave blank to preserve the current password' : 'Enter database password' }}">
+                                @if ($selectedConfiguration)
+                                    <div class="form-text">Leave this blank to keep the existing saved password.</div>
+                                @endif
+                            </div>
                             <div class="col-12">
-                                <label class="form-label">SSH Public Key</label>
+                                <label class="form-label">SSH Public Key <span class="text-danger">*</span></label>
                                 <textarea
                                     class="form-control font-monospace"
                                     rows="6"
@@ -288,7 +339,7 @@
                         @if ($selectedKey)
                             <div class="alert alert-warning rounded-4 mt-4 mb-0">
                                 <div class="fw-semibold mb-2">An SSH key is already registered for this facility.</div>
-                                <p class="mb-3">Please provide a reason before updating the key.</p>
+                                <p class="mb-3">Provide a reason only if you are changing the SSH public key.</p>
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <label class="form-label">Update Reason</label>
@@ -309,7 +360,7 @@
                     </div>
                     <div class="modal-footer border-0 px-4 pb-4">
                         <button type="button" class="btn btn-outline-secondary rounded-pill px-4" wire:click="closeKeyModal">Cancel</button>
-                        <button type="button" class="btn btn-dark rounded-pill px-4" wire:click="saveKey" wire:loading.attr="disabled">Save Key</button>
+                        <button type="button" class="btn btn-dark rounded-pill px-4" wire:click="saveConfiguration" wire:loading.attr="disabled">Save Configuration</button>
                     </div>
                 </div>
             </div>

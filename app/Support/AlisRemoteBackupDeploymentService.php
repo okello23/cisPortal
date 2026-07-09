@@ -30,7 +30,7 @@ class AlisRemoteBackupDeploymentService
             'status' => 'failed',
             'total_active_keys' => $activeKeys->count(),
             'total_pending_changes' => $pendingKeys->count(),
-            'backup_server' => (string) config('alis_remote_backup_keys.host'),
+            'backup_server' => (string) config('alis_backup.server'),
             'authorized_keys_path' => (string) config('alis_remote_backup_keys.authorized_keys_path'),
         ]);
 
@@ -151,13 +151,13 @@ class AlisRemoteBackupDeploymentService
             ->run([
                 'scp',
                 ...$sshOptions['scp'],
-                $tempFile,
-                $remote.':'.$remoteTempPath,
-            ]);
+            $tempFile,
+            $remote.':'.$remoteTempPath,
+        ]);
 
         if ($copy->failed()) {
             @unlink($tempFile);
-            throw new RuntimeException(trim($copy->errorOutput()) ?: 'Failed to upload authorized_keys to the backup server.');
+            throw new RuntimeException('Failed to upload the updated authorized_keys file to the backup server.');
         }
 
         $install = Process::timeout((int) config('alis_remote_backup_keys.process_timeout', 30))
@@ -172,7 +172,7 @@ class AlisRemoteBackupDeploymentService
         @unlink($tempFile);
 
         if ($install->failed()) {
-            throw new RuntimeException(trim($install->errorOutput()) ?: 'Failed to install authorized_keys on the backup server.');
+            throw new RuntimeException('Failed to install the updated authorized_keys file on the backup server.');
         }
     }
 

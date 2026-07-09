@@ -2,14 +2,18 @@
 
 namespace App\Livewire;
 
+use App\Models\AlisBackupConfiguration;
 use App\Models\AlisRemoteBackupDeployment;
 use App\Models\AlisRemoteBackupKey;
 use App\Models\AlisRemoteBackupKeyHistory;
 use App\Models\AlisRemoteBackupKeyUpdateReason;
 use App\Models\Facility;
 use App\Models\Region;
+use App\Models\User;
+use App\Support\AlisBackupConfigurationService;
 use App\Support\AlisRemoteBackupDeploymentService;
-use App\Support\AlisRemoteBackupKeyService;
+use App\Support\AlisBackupProvisioningService;
+use App\Support\BackupDirectoryNameGenerator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -28,6 +32,14 @@ class AlisRemoteBackupKeysManager extends Component
 
     public string $keySearch = '';
 
+    public string $backupDirectoryName = '';
+
+    public string $databaseName = '';
+
+    public string $databaseUsername = '';
+
+    public string $databasePassword = '';
+
     public string $publicKey = '';
 
     public string $reasonId = '';
@@ -42,128 +54,213 @@ class AlisRemoteBackupKeysManager extends Component
 
     public function mount(): void
     {
+        abort_unless($this->canManage(Auth::user()), 403);
+
+        $directoryNameGenerator = app(BackupDirectoryNameGenerator::class);
         $this->facilityId = request()->string('facility_id')->toString();
         $this->syncFiltersFromFacility();
         $this->normalizeSelections();
+        $this->syncBackupDirectoryName($directoryNameGenerator);
+        $this->loadSelectedConfigurationIntoForm($directoryNameGenerator);
     }
 
     public function updatedRegionId(): void
     {
+        $directoryNameGenerator = app(BackupDirectoryNameGenerator::class);
         $this->districtName = '';
         $this->facilityId = '';
-        $this->loadSelectedKeyIntoForm();
+        $this->syncBackupDirectoryName($directoryNameGenerator);
+        $this->loadSelectedConfigurationIntoForm($directoryNameGenerator);
     }
 
     public function updatedDistrictName(): void
     {
+        $directoryNameGenerator = app(BackupDirectoryNameGenerator::class);
         $this->facilityId = '';
-        $this->loadSelectedKeyIntoForm();
+        $this->syncBackupDirectoryName($directoryNameGenerator);
+        $this->loadSelectedConfigurationIntoForm($directoryNameGenerator);
     }
 
     public function updatedFacilityId(): void
     {
+        $directoryNameGenerator = app(BackupDirectoryNameGenerator::class);
         $this->syncFiltersFromFacility();
         $this->normalizeSelections();
-        $this->loadSelectedKeyIntoForm();
+        $this->syncBackupDirectoryName($directoryNameGenerator);
+        $this->loadSelectedConfigurationIntoForm($directoryNameGenerator);
     }
 
     public function openCreateModal(): void
     {
+        $directoryNameGenerator = app(BackupDirectoryNameGenerator::class);
         $this->showKeyModal = true;
         $this->regionId = '';
         $this->districtName = '';
         $this->facilityId = '';
-        $this->publicKey = '';
-        $this->reasonId = '';
-        $this->comments = '';
+        $this->syncBackupDirectoryName($directoryNameGenerator);
+        $this->loadSelectedConfigurationIntoForm($directoryNameGenerator);
         $this->resetValidation();
     }
 
     public function openEditModal(int $facilityId): void
     {
+        $directoryNameGenerator = app(BackupDirectoryNameGenerator::class);
         $this->showKeyModal = true;
         $this->facilityId = (string) $facilityId;
         $this->syncFiltersFromFacility();
         $this->normalizeSelections();
-        $this->loadSelectedKeyIntoForm();
+        $this->syncBackupDirectoryName($directoryNameGenerator);
+        $this->loadSelectedConfigurationIntoForm($directoryNameGenerator);
     }
 
     public function closeKeyModal(): void
     {
         $this->showKeyModal = false;
+        $this->databasePassword = '';
+        $this->reasonId = '';
+        $this->comments = '';
         $this->resetValidation();
     }
 
-    public function saveKey(AlisRemoteBackupKeyService $keyService): void
+    public function saveConfiguration(): void
     {
+        $configurationService = app(AlisBackupConfigurationService::class);
         $this->flashMessage = null;
         $this->flashError = null;
 
         $this->validate([
             'facilityId' => ['required', 'exists:facilities,id'],
+            'databaseName' => ['required', 'string'],
+            'databaseUsername' => ['required', 'string'],
+            'databasePassword' => [$this->selectedConfiguration() ? 'nullable' : 'required', 'nullable', 'string'],
             'publicKey' => ['required', 'string'],
-            'reasonId' => [$this->selectedKey() ? 'required' : 'nullable', 'nullable', 'exists:alis_remote_backup_key_update_reasons,id'],
+            'reasonId' => ['nullable', 'exists:alis_remote_backup_key_update_reasons,id'],
             'comments' => ['nullable', 'string'],
         ], [
             'facilityId.required' => 'Please select a facility.',
-            'reasonId.required' => 'Please provide a reason for updating the existing SSH key.',
+            'databaseName.required' => 'A-LIS database name is required.',
+            'databaseUsername.required' => 'A-LIS database username is required.',
+            'databasePassword.required' => 'A-LIS database password is required.',
+            'publicKey.required' => 'SSH public key is required.',
         ]);
 
         try {
             $facility = Facility::query()->findOrFail((int) $this->facilityId);
             $reason = $this->reasonId !== '' ? AlisRemoteBackupKeyUpdateReason::query()->findOrFail((int) $this->reasonId) : null;
-            $keyService->saveKey($facility, $this->publicKey, Auth::user(), $reason, $this->comments);
 
-            $this->publicKey = $this->selectedKey()?->public_key ?? $this->publicKey;
+            $configuration = $configurationService->saveConfiguration(
+                $facility,
+                $this->databaseName,
+                $this->databaseUsername,
+                $this->databasePassword,
+                $this->publicKey,
+                Auth::user(),
+                $reason,
+                $this->comments,
+            );
+
+            $this->databasePassword = '';
             $this->reasonId = '';
             $this->comments = '';
-            $this->flashMessage = 'Key saved successfully. Pending deployment.';
             $this->showKeyModal = false;
+
+            if ($configuration->status === AlisBackupConfiguration::STATUS_PROVISIONED) {
+                $this->flashMessage = 'Backup configuration saved successfully. The facility backup directory has been created on the central backup server. Download the generated backup script and copy it to the A-LIS server.';
+            } else {
+                $this->flashError = $configuration->last_provisioning_error ?: 'Backup configuration was saved, but provisioning did not complete successfully.';
+            }
         } catch (ValidationException $exception) {
             $this->setErrorBag($exception->validator->getMessageBag());
         }
     }
 
-    public function deployKeys(AlisRemoteBackupDeploymentService $deploymentService): void
+    public function retryProvisioning(int $configurationId): void
     {
+        $provisioningService = app(AlisBackupProvisioningService::class);
         $this->flashMessage = null;
         $this->flashError = null;
 
-        $deployment = $deploymentService->deploy(Auth::user());
+        $configuration = AlisBackupConfiguration::query()->findOrFail($configurationId);
+        $this->facilityId = (string) $configuration->facility_id;
 
-        if ($deployment->status === 'success') {
-            $this->flashMessage = 'All active SSH keys were deployed successfully.';
+        $configuration = $provisioningService->provision($configuration, Auth::user());
+
+        if ($configuration->status === AlisBackupConfiguration::STATUS_PROVISIONED) {
+            $this->flashMessage = 'Provisioning completed successfully. The backup script is ready to download.';
 
             return;
         }
 
-        $this->flashError = $deployment->error_message ?: 'Deployment finished with issues.';
+        $this->flashError = $configuration->last_provisioning_error ?: 'Provisioning failed. Please try again.';
     }
 
-    public function toggleKeyStatus(int $keyId): void
+    public function toggleConfigurationStatus(int $configurationId): void
     {
-        $key = AlisRemoteBackupKey::query()->findOrFail($keyId);
-        $isDeactivating = $key->status === 'active';
+        $provisioningService = app(AlisBackupProvisioningService::class);
+        $this->flashMessage = null;
+        $this->flashError = null;
+
+        $configuration = AlisBackupConfiguration::query()->findOrFail($configurationId);
+        $key = AlisRemoteBackupKey::query()
+            ->where('facility_id', $configuration->facility_id)
+            ->latest('updated_at')
+            ->firstOrFail();
+
+        $isDisabling = $configuration->status !== AlisBackupConfiguration::STATUS_DISABLED;
 
         $key->forceFill([
-            'status' => $isDeactivating ? 'inactive' : 'active',
+            'status' => $isDisabling ? 'inactive' : 'active',
             'deployment_status' => 'pending',
             'updated_by' => Auth::id(),
         ])->save();
 
         AlisRemoteBackupKeyHistory::query()->create([
             'facility_id' => $key->facility_id,
-            'action' => $isDeactivating ? 'revoked' : 'updated',
+            'action' => $isDisabling ? 'revoked' : 'updated',
             'old_public_key' => $key->public_key,
             'new_public_key' => $key->public_key,
             'old_fingerprint' => $key->fingerprint,
             'new_fingerprint' => $key->fingerprint,
             'performed_by' => Auth::id(),
             'performed_at' => now(),
-            'comments' => $isDeactivating ? 'Key deactivated from registry.' : 'Key reactivated from registry.',
+            'comments' => $isDisabling ? 'Backup configuration disabled.' : 'Backup configuration re-enabled.',
         ]);
 
-        $this->flashMessage = $isDeactivating ? 'Key deactivated. Pending deployment.' : 'Key reactivated. Pending deployment.';
+        if ($isDisabling) {
+            $configuration->forceFill([
+                'status' => AlisBackupConfiguration::STATUS_DISABLED,
+                'updated_by' => Auth::id(),
+                'last_provisioning_error' => null,
+            ])->save();
+
+            $deployment = app(AlisRemoteBackupDeploymentService::class)->deploy(Auth::user());
+
+            if ($deployment->status === 'success') {
+                $this->flashMessage = 'Backup configuration disabled.';
+
+                return;
+            }
+
+            $this->flashError = 'Backup configuration was disabled, but the key removal deployment did not complete successfully.';
+
+            return;
+        }
+
+        $configuration->forceFill([
+            'status' => AlisBackupConfiguration::STATUS_PENDING_PROVISIONING,
+            'updated_by' => Auth::id(),
+            'last_provisioning_error' => null,
+        ])->save();
+
+        $configuration = $provisioningService->provision($configuration, Auth::user());
+
+        if ($configuration->status === AlisBackupConfiguration::STATUS_PROVISIONED) {
+            $this->flashMessage = 'Backup configuration re-enabled and provisioned successfully.';
+
+            return;
+        }
+
+        $this->flashError = $configuration->last_provisioning_error ?: 'Backup configuration was re-enabled, but provisioning failed.';
     }
 
     public function render(): View
@@ -172,14 +269,16 @@ class AlisRemoteBackupKeysManager extends Component
             'regions' => Region::query()->where('active', true)->orderBy('sort_order')->orderBy('name')->get(),
             'districtOptions' => $this->districtOptions(),
             'facilities' => $this->facilityOptions(),
-            'keys' => $this->keyRows(),
+            'configurations' => $this->configurationRows(),
             'selectedFacility' => $this->selectedFacility(),
+            'selectedConfiguration' => $this->selectedConfiguration(),
             'selectedKey' => $this->selectedKey(),
             'history' => $this->selectedHistory(),
             'activeReasons' => AlisRemoteBackupKeyUpdateReason::query()->where('active', true)->orderBy('name')->get(),
             'latestDeployment' => AlisRemoteBackupDeployment::query()->with('deployer')->latest('deployed_at')->first(),
-            'pendingCount' => AlisRemoteBackupKey::query()->where('status', 'active')->where('deployment_status', 'pending')->count(),
-            'failedCount' => AlisRemoteBackupKey::query()->where('status', 'active')->where('deployment_status', 'failed')->count(),
+            'pendingCount' => AlisBackupConfiguration::query()->where('status', AlisBackupConfiguration::STATUS_PENDING_PROVISIONING)->count(),
+            'failedCount' => AlisBackupConfiguration::query()->where('status', AlisBackupConfiguration::STATUS_PROVISIONING_FAILED)->count(),
+            'provisionedCount' => AlisBackupConfiguration::query()->where('status', AlisBackupConfiguration::STATUS_PROVISIONED)->count(),
         ]);
     }
 
@@ -193,6 +292,18 @@ class AlisRemoteBackupKeysManager extends Component
         return Facility::query()
             ->with('region')
             ->find((int) $this->facilityId);
+    }
+
+    #[Computed]
+    public function selectedConfiguration(): ?AlisBackupConfiguration
+    {
+        if ($this->facilityId === '') {
+            return null;
+        }
+
+        return AlisBackupConfiguration::query()
+            ->where('facility_id', (int) $this->facilityId)
+            ->first();
     }
 
     #[Computed]
@@ -222,15 +333,25 @@ class AlisRemoteBackupKeysManager extends Component
             ->get();
     }
 
-    private function facilityOptions(): Collection
+    private function configurationRows(): Collection
     {
-        return Facility::query()
-            ->with('region')
-            ->where('active', true)
-            ->when($this->regionId !== '', fn ($query) => $query->where('region_id', (int) $this->regionId))
-            ->when($this->districtName !== '', fn ($query) => $query->where('district_name', $this->districtName))
-            ->orderBy('sort_order')
-            ->orderBy('name')
+        return AlisBackupConfiguration::query()
+            ->with(['facility.region', 'creator'])
+            ->when(trim($this->keySearch) !== '', function (Builder $query) {
+                $search = '%'.trim($this->keySearch).'%';
+
+                $query->where(function (Builder $inner) use ($search) {
+                    $inner->where('backup_directory_name', 'like', $search)
+                        ->orWhere('status', 'like', $search)
+                        ->orWhereHas('facility', function (Builder $facility) use ($search) {
+                            $facility->where('name', 'like', $search)
+                                ->orWhere('district_name', 'like', $search)
+                                ->orWhere('code', 'like', $search)
+                                ->orWhereHas('region', fn (Builder $region) => $region->where('name', 'like', $search));
+                        });
+                });
+            })
+            ->latest('updated_at')
             ->get();
     }
 
@@ -247,33 +368,50 @@ class AlisRemoteBackupKeysManager extends Component
             ->values();
     }
 
-    private function keyRows(): Collection
+    private function facilityOptions(): Collection
     {
-        return AlisRemoteBackupKey::query()
-            ->with(['facility.region', 'creator'])
-            ->when(trim($this->keySearch) !== '', function (Builder $query) {
-                $search = '%'.trim($this->keySearch).'%';
-
-                $query->where(function (Builder $inner) use ($search) {
-                    $inner->whereHas('facility', function (Builder $facility) use ($search) {
-                        $facility->where('name', 'like', $search)
-                            ->orWhere('district_name', 'like', $search)
-                            ->orWhere('code', 'like', $search)
-                            ->orWhereHas('region', fn (Builder $region) => $region->where('name', 'like', $search));
-                    })->orWhere('fingerprint', 'like', $search);
-                });
-            })
-            ->latest('created_at')
+        return Facility::query()
+            ->with('region')
+            ->where('active', true)
+            ->when($this->regionId !== '', fn ($query) => $query->where('region_id', (int) $this->regionId))
+            ->when($this->districtName !== '', fn ($query) => $query->where('district_name', $this->districtName))
+            ->orderBy('sort_order')
+            ->orderBy('name')
             ->get();
     }
 
-    private function loadSelectedKeyIntoForm(): void
+    private function loadSelectedConfigurationIntoForm(BackupDirectoryNameGenerator $directoryNameGenerator): void
     {
-        $this->resetValidation(['publicKey', 'reasonId', 'comments']);
-        $this->flashError = null;
-        $this->flashMessage = null;
+        $this->resetValidation([
+            'backupDirectoryName',
+            'databaseName',
+            'databaseUsername',
+            'databasePassword',
+            'publicKey',
+            'reasonId',
+            'comments',
+        ]);
+
         $this->reasonId = '';
         $this->comments = '';
+        $this->databasePassword = '';
+
+        $facility = $this->selectedFacility();
+
+        if (! $facility) {
+            $this->backupDirectoryName = '';
+            $this->databaseName = '';
+            $this->databaseUsername = '';
+            $this->publicKey = '';
+
+            return;
+        }
+
+        $configuration = $this->selectedConfiguration();
+        $this->backupDirectoryName = $configuration?->backup_directory_name
+            ?? $directoryNameGenerator->generate($facility->name);
+        $this->databaseName = $configuration?->database_name ?? '';
+        $this->databaseUsername = $configuration?->database_username ?? '';
         $this->publicKey = $this->selectedKey()?->public_key ?? '';
     }
 
@@ -297,6 +435,14 @@ class AlisRemoteBackupKeysManager extends Component
         $this->districtName = $facility->district_name ?? '';
     }
 
+    private function syncBackupDirectoryName(BackupDirectoryNameGenerator $directoryNameGenerator): void
+    {
+        $facility = $this->selectedFacility();
+        $this->backupDirectoryName = $facility
+            ? $directoryNameGenerator->generate($facility->name)
+            : '';
+    }
+
     private function normalizeSelections(): void
     {
         if ($this->districtName !== '' && ! $this->districtOptions()->contains($this->districtName)) {
@@ -313,5 +459,15 @@ class AlisRemoteBackupKeysManager extends Component
         if (! $facilityExists) {
             $this->facilityId = '';
         }
+    }
+
+    private function canManage(?User $user): bool
+    {
+        return $user?->hasAnyRole([
+            User::ROLE_ICT_ADMIN,
+            User::ROLE_ICT_SUPPORT_STAFF,
+            User::ROLE_ICT_SUPERVISOR,
+            User::ROLE_DEVELOPER,
+        ]) ?? false;
     }
 }
