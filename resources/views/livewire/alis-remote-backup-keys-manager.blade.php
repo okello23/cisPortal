@@ -84,9 +84,15 @@
                                             </button>
                                         @endif
                                         @if ($configuration->status === \App\Models\AlisBackupConfiguration::STATUS_PROVISIONED)
-                                            <a href="{{ route('infrastructure.alis-remote-backup-keys.download-script', $configuration) }}" class="btn btn-sm btn-success rounded-pill">
-                                                Download Backup Script
-                                            </a>
+                                            @if (\Illuminate\Support\Facades\Route::has('infrastructure.alis-remote-backup-keys.download-script'))
+                                                <a href="{{ route('infrastructure.alis-remote-backup-keys.download-script', $configuration) }}" class="btn btn-sm btn-success rounded-pill">
+                                                    Download Backup Script
+                                                </a>
+                                            @else
+                                                <button type="button" class="btn btn-sm btn-success rounded-pill" disabled>
+                                                    Download Backup Script
+                                                </button>
+                                            @endif
                                         @endif
                                         <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" wire:click="toggleConfigurationStatus({{ $configuration->id }})">
                                             {{ $configuration->status === \App\Models\AlisBackupConfiguration::STATUS_DISABLED ? 'Enable' : 'Disable' }}
@@ -182,9 +188,15 @@
 
                     <div class="d-flex gap-2 flex-wrap mt-3">
                         @if ($selectedConfiguration->status === \App\Models\AlisBackupConfiguration::STATUS_PROVISIONED)
-                            <a href="{{ route('infrastructure.alis-remote-backup-keys.download-script', $selectedConfiguration) }}" class="btn btn-success rounded-pill">
-                                Download Backup Script
-                            </a>
+                            @if (\Illuminate\Support\Facades\Route::has('infrastructure.alis-remote-backup-keys.download-script'))
+                                <a href="{{ route('infrastructure.alis-remote-backup-keys.download-script', $selectedConfiguration) }}" class="btn btn-success rounded-pill">
+                                    Download Backup Script
+                                </a>
+                            @else
+                                <button type="button" class="btn btn-success rounded-pill" disabled>
+                                    Download Backup Script
+                                </button>
+                            @endif
                         @endif
                         @if ($selectedConfiguration->status === \App\Models\AlisBackupConfiguration::STATUS_PROVISIONING_FAILED || $selectedConfiguration->status === \App\Models\AlisBackupConfiguration::STATUS_PENDING_PROVISIONING)
                             <button type="button" class="btn btn-outline-warning rounded-pill" wire:click="retryProvisioning({{ $selectedConfiguration->id }})">
