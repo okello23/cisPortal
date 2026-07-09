@@ -41,7 +41,7 @@ class AlisRemoteBackupKeyController extends Controller
             $request,
         );
 
-        $filename = 'backupscript_'.$configuration->backup_directory_name.'.sh';
+        $filename = 'backupscript.sh';
 
         return response()->streamDownload(
             fn () => print $scriptGenerator->render($configuration),

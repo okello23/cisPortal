@@ -238,15 +238,15 @@
             @if ($latestDeployment)
                 <dl class="row mb-0">
                     <dt class="col-sm-5">Last Batch</dt>
-                    <dd class="col-sm-7">{{ $latestDeployment->deployment_batch_reference }}</dd>
+                    <dd class="col-sm-7 text-break">{{ $latestDeployment->deployment_batch_reference }}</dd>
                     <dt class="col-sm-5">Status</dt>
                     <dd class="col-sm-7 text-capitalize">{{ $latestDeployment->status }}</dd>
                     <dt class="col-sm-5">Deployed At</dt>
                     <dd class="col-sm-7">{{ $latestDeployment->deployed_at?->format('Y-m-d H:i') ?? 'N/A' }}</dd>
                     <dt class="col-sm-5">Server</dt>
-                    <dd class="col-sm-7">{{ $latestDeployment->backup_server ?: 'N/A' }}</dd>
+                    <dd class="col-sm-7 text-break">{{ $latestDeployment->backup_server ?: 'N/A' }}</dd>
                     <dt class="col-sm-5">Path</dt>
-                    <dd class="col-sm-7 font-monospace small">{{ $latestDeployment->authorized_keys_path ?: 'N/A' }}</dd>
+                    <dd class="col-sm-7 font-monospace small text-break">{{ $latestDeployment->authorized_keys_path ?: 'N/A' }}</dd>
                 </dl>
 
                 @if ($latestDeployment->error_message)
