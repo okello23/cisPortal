@@ -124,9 +124,9 @@ BASH;
             '{{DB_USER}}' => $this->shellEscape($configuration->database_username),
             '{{DB_PASS}}' => $this->shellEscape($configuration->database_password),
             '{{FACILITY}}' => $this->shellEscape($configuration->backup_directory_name),
-            '{{REMOTE_SERVER}}' => $this->shellEscape((string) config('alis_backup.server')),
-            '{{REMOTE_USER}}' => $this->shellEscape((string) config('alis_backup.user')),
-            '{{REMOTE_PORT}}' => $this->shellEscape((string) config('alis_backup.port')),
+            '{{REMOTE_SERVER}}' => $this->shellEscape((string) config('alis_backup.facility_offsite_server_ip')),
+            '{{REMOTE_USER}}' => $this->shellEscape('backupuser'),
+            '{{REMOTE_PORT}}' => $this->shellEscape('22'),
             '{{REMOTE_ROOT}}' => $this->shellEscape((string) config('alis_backup.root')),
         ]);
     }
