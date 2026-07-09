@@ -7,6 +7,7 @@ use App\Models\AlisRemoteBackupKey;
 use App\Models\AlisRemoteBackupKeyHistory;
 use App\Models\AlisRemoteBackupKeyUpdateReason;
 use App\Models\Facility;
+use App\Models\Region;
 use App\Support\AlisRemoteBackupDeploymentService;
 use App\Support\AlisRemoteBackupKeyService;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,6 +20,10 @@ use Livewire\Component;
 
 class AlisRemoteBackupKeysManager extends Component
 {
+    public string $regionId = '';
+
+    public string $districtName = '';
+
     public string $facilityId = '';
 
     public string $keySearch = '';
@@ -38,16 +43,35 @@ class AlisRemoteBackupKeysManager extends Component
     public function mount(): void
     {
         $this->facilityId = request()->string('facility_id')->toString();
+        $this->syncFiltersFromFacility();
+        $this->normalizeSelections();
+    }
+
+    public function updatedRegionId(): void
+    {
+        $this->districtName = '';
+        $this->facilityId = '';
+        $this->loadSelectedKeyIntoForm();
+    }
+
+    public function updatedDistrictName(): void
+    {
+        $this->facilityId = '';
+        $this->loadSelectedKeyIntoForm();
     }
 
     public function updatedFacilityId(): void
     {
+        $this->syncFiltersFromFacility();
+        $this->normalizeSelections();
         $this->loadSelectedKeyIntoForm();
     }
 
     public function openCreateModal(): void
     {
         $this->showKeyModal = true;
+        $this->regionId = '';
+        $this->districtName = '';
         $this->facilityId = '';
         $this->publicKey = '';
         $this->reasonId = '';
@@ -59,6 +83,8 @@ class AlisRemoteBackupKeysManager extends Component
     {
         $this->showKeyModal = true;
         $this->facilityId = (string) $facilityId;
+        $this->syncFiltersFromFacility();
+        $this->normalizeSelections();
         $this->loadSelectedKeyIntoForm();
     }
 
@@ -95,7 +121,6 @@ class AlisRemoteBackupKeysManager extends Component
             $this->showKeyModal = false;
         } catch (ValidationException $exception) {
             $this->setErrorBag($exception->validator->getMessageBag());
-            $this->flashError = 'Please review the key details and try again.';
         }
     }
 
@@ -144,6 +169,8 @@ class AlisRemoteBackupKeysManager extends Component
     public function render(): View
     {
         return view('livewire.alis-remote-backup-keys-manager', [
+            'regions' => Region::query()->where('active', true)->orderBy('sort_order')->orderBy('name')->get(),
+            'districtOptions' => $this->districtOptions(),
             'facilities' => $this->facilityOptions(),
             'keys' => $this->keyRows(),
             'selectedFacility' => $this->selectedFacility(),
@@ -200,8 +227,24 @@ class AlisRemoteBackupKeysManager extends Component
         return Facility::query()
             ->with('region')
             ->where('active', true)
+            ->when($this->regionId !== '', fn ($query) => $query->where('region_id', (int) $this->regionId))
+            ->when($this->districtName !== '', fn ($query) => $query->where('district_name', $this->districtName))
+            ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
+    }
+
+    private function districtOptions(): Collection
+    {
+        return Facility::query()
+            ->where('active', true)
+            ->when($this->regionId !== '', fn ($query) => $query->where('region_id', (int) $this->regionId))
+            ->whereNotNull('district_name')
+            ->where('district_name', '!=', '')
+            ->distinct()
+            ->orderBy('district_name')
+            ->pluck('district_name')
+            ->values();
     }
 
     private function keyRows(): Collection
@@ -232,5 +275,43 @@ class AlisRemoteBackupKeysManager extends Component
         $this->reasonId = '';
         $this->comments = '';
         $this->publicKey = $this->selectedKey()?->public_key ?? '';
+    }
+
+    private function syncFiltersFromFacility(): void
+    {
+        if ($this->facilityId === '') {
+            return;
+        }
+
+        $facility = Facility::query()
+            ->select('id', 'region_id', 'district_name')
+            ->find((int) $this->facilityId);
+
+        if (! $facility) {
+            $this->facilityId = '';
+
+            return;
+        }
+
+        $this->regionId = $facility->region_id ? (string) $facility->region_id : '';
+        $this->districtName = $facility->district_name ?? '';
+    }
+
+    private function normalizeSelections(): void
+    {
+        if ($this->districtName !== '' && ! $this->districtOptions()->contains($this->districtName)) {
+            $this->districtName = '';
+        }
+
+        if ($this->facilityId === '') {
+            return;
+        }
+
+        $facilityExists = $this->facilityOptions()
+            ->contains(fn (Facility $facility) => (string) $facility->id === $this->facilityId);
+
+        if (! $facilityExists) {
+            $this->facilityId = '';
+        }
     }
 }

@@ -1,10 +1,10 @@
 <div class="row g-4" wire:loading.class="opacity-90">
     <div class="col-lg-7">
-        @if ($flashMessage)
+        @if ($flashMessage && ! $showKeyModal)
             <div class="alert alert-success rounded-4">{{ $flashMessage }}</div>
         @endif
 
-        @if ($flashError)
+        @if ($flashError && ! $showKeyModal)
             <div class="alert alert-danger rounded-4">{{ $flashError }}</div>
         @endif
 
@@ -227,22 +227,51 @@
                         <button type="button" class="btn-close" wire:click="closeKeyModal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body px-4 pb-4">
+                        @if ($flashError)
+                            <div class="alert alert-danger rounded-4 mb-3">{{ $flashError }}</div>
+                        @endif
+
+                        @if ($errors->any())
+                            <div class="alert alert-danger rounded-4 mb-3">
+                                {{ $errors->first() }}
+                            </div>
+                        @endif
+
                         <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Region</label>
+                                <select class="form-select" wire:model.live="regionId">
+                                    <option value="">Select region</option>
+                                    @foreach ($regions as $region)
+                                        <option value="{{ $region->id }}">{{ $region->name }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="form-text">Used only to narrow the facility list.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">District</label>
+                                <select class="form-select" wire:model.live="districtName" @disabled($regionId === '')>
+                                    <option value="">Select district</option>
+                                    @foreach ($districtOptions as $district)
+                                        <option value="{{ $district }}">{{ $district }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="form-text">
+                                    {{ $regionId !== '' ? 'District options are filtered by the selected region.' : 'Choose a region first.' }}
+                                </div>
+                            </div>
                             <div class="col-12">
                                 <label class="form-label">Facility</label>
-                                <div wire:ignore>
-                                    <select
-                                        class="form-select js-facility-select2"
-                                        data-placeholder="Search facility by name, district, region, or code"
-                                        data-selected-value="{{ $facilityId }}"
-                                    >
-                                        <option value="">Select facility</option>
-                                        @foreach ($facilities as $facility)
-                                            <option value="{{ $facility->id }}">
-                                                {{ $facility->name }}{{ $facility->district_name ? ' | '.$facility->district_name : '' }}{{ $facility->region?->name ? ' | '.$facility->region->name : '' }}{{ $facility->code ? ' | '.$facility->code : '' }}
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                <select class="form-select" wire:model.live="facilityId" @disabled($districtName === '')>
+                                    <option value="">Select facility</option>
+                                    @foreach ($facilities as $facility)
+                                        <option value="{{ $facility->id }}">
+                                            {{ $facility->name }}{{ $facility->code ? ' | '.$facility->code : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="form-text">
+                                    {{ $districtName !== '' ? 'Facilities are limited to the selected district.' : 'Choose a district first.' }}
                                 </div>
                             </div>
                             <div class="col-12">
