@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\AlisBackupConfiguration;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use RuntimeException;
 
@@ -37,6 +38,19 @@ class AlisBackupProvisioningService
                 'last_provisioning_error' => null,
             ])->save();
         } catch (\Throwable $exception) {
+            Log::error('A-LIS backup provisioning failed.', [
+                'configuration_id' => $configuration->id,
+                'facility_id' => $configuration->facility_id,
+                'backup_directory_name' => $configuration->backup_directory_name,
+                'backup_server' => config('alis_backup.server'),
+                'backup_user' => config('alis_backup.user'),
+                'backup_port' => config('alis_backup.port'),
+                'backup_root' => config('alis_backup.root'),
+                'error' => $exception->getMessage(),
+                'exception' => $exception::class,
+                'triggered_by' => $user->id,
+            ]);
+
             $configuration->forceFill([
                 'status' => AlisBackupConfiguration::STATUS_PROVISIONING_FAILED,
                 'last_provisioning_error' => $this->safeMessage($exception),
@@ -94,6 +108,17 @@ class AlisBackupProvisioningService
         ]);
 
         if ($result->failed()) {
+            Log::error('A-LIS remote directory provisioning command failed.', [
+                'configuration_id' => $configuration->id,
+                'facility_id' => $configuration->facility_id,
+                'backup_directory_name' => $configuration->backup_directory_name,
+                'remote' => $remote,
+                'directory' => $directory,
+                'exit_code' => $result->exitCode(),
+                'stdout' => $this->trimOutput($result->output()),
+                'stderr' => $this->trimOutput($result->errorOutput()),
+            ]);
+
             throw new RuntimeException('The facility backup directory could not be provisioned on the central backup server.');
         }
     }
@@ -109,5 +134,16 @@ class AlisBackupProvisioningService
     private function shellEscape(string $value): string
     {
         return "'".str_replace("'", "'\"'\"'", $value)."'";
+    }
+
+    private function trimOutput(string $value): ?string
+    {
+        $value = trim($value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        return mb_substr($value, 0, 2000);
     }
 }

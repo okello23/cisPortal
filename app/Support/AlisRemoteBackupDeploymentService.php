@@ -8,6 +8,7 @@ use App\Models\AlisRemoteBackupKeyHistory;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -66,6 +67,19 @@ class AlisRemoteBackupDeploymentService
                 ])->save();
             });
         } catch (\Throwable $exception) {
+            Log::error('A-LIS authorized_keys deployment failed.', [
+                'deployment_id' => $deployment->id,
+                'deployment_batch_reference' => $deployment->deployment_batch_reference,
+                'backup_server' => config('alis_remote_backup_keys.host'),
+                'backup_user' => config('alis_remote_backup_keys.user'),
+                'backup_port' => config('alis_remote_backup_keys.port'),
+                'authorized_keys_path' => config('alis_remote_backup_keys.authorized_keys_path'),
+                'pending_keys' => $pendingKeys->count(),
+                'error' => $exception->getMessage(),
+                'exception' => $exception::class,
+                'triggered_by' => $user->id,
+            ]);
+
             DB::transaction(function () use ($pendingKeys, $deployment, $user, $exception) {
                 foreach ($pendingKeys as $key) {
                     $key->forceFill([
@@ -151,11 +165,20 @@ class AlisRemoteBackupDeploymentService
             ->run([
                 'scp',
                 ...$sshOptions['scp'],
-            $tempFile,
-            $remote.':'.$remoteTempPath,
-        ]);
+                $tempFile,
+                $remote.':'.$remoteTempPath,
+            ]);
 
         if ($copy->failed()) {
+            Log::error('A-LIS authorized_keys upload command failed.', [
+                'remote' => $remote,
+                'remote_temp_path' => $remoteTempPath,
+                'port' => $port,
+                'exit_code' => $copy->exitCode(),
+                'stdout' => $this->trimOutput($copy->output()),
+                'stderr' => $this->trimOutput($copy->errorOutput()),
+            ]);
+
             @unlink($tempFile);
             throw new RuntimeException('Failed to upload the updated authorized_keys file to the backup server.');
         }
@@ -172,6 +195,16 @@ class AlisRemoteBackupDeploymentService
         @unlink($tempFile);
 
         if ($install->failed()) {
+            Log::error('A-LIS authorized_keys install command failed.', [
+                'remote' => $remote,
+                'remote_temp_path' => $remoteTempPath,
+                'port' => $port,
+                'authorized_keys_path' => config('alis_remote_backup_keys.authorized_keys_path'),
+                'exit_code' => $install->exitCode(),
+                'stdout' => $this->trimOutput($install->output()),
+                'stderr' => $this->trimOutput($install->errorOutput()),
+            ]);
+
             throw new RuntimeException('Failed to install the updated authorized_keys file on the backup server.');
         }
     }
@@ -190,5 +223,16 @@ class AlisRemoteBackupDeploymentService
             'ssh' => $ssh,
             'scp' => $scp,
         ];
+    }
+
+    private function trimOutput(string $value): ?string
+    {
+        $value = trim($value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        return mb_substr($value, 0, 2000);
     }
 }
