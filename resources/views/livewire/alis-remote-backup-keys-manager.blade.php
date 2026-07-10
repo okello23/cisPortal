@@ -15,7 +15,7 @@
                 </div>
                 <div class="d-flex gap-2">
                     <a
-                        href="{{ asset('docs/a-lis-off-site-database-backup-restoration-sop-linuxubuntu-1.pdf') }}"
+                        href="{{ asset('docs/alis%20Backup%20SOP.pdf') }}"
                         class="btn btn-outline-dark rounded-pill px-4"
                         download
                         target="_blank"
@@ -360,7 +360,7 @@
                                 <div class="small text-muted">Download the Linux Ubuntu off-site database backup and restoration SOP for step-by-step guidance.</div>
                             </div>
                             <a
-                                href="{{ asset('docs/a-lis-off-site-database-backup-restoration-sop-linuxubuntu-1.pdf') }}"
+                                href="{{ asset('docs/alis%20Backup%20SOP.pdf') }}"
                                 class="btn btn-outline-dark rounded-pill px-4"
                                 download
                                 target="_blank"

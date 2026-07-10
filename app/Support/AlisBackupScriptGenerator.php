@@ -56,6 +56,8 @@ log "Creating compressed MySQL database dump..."
 
 mysqldump \
     --single-transaction \
+    --skip-lock-tables \
+    --no-tablespaces \
     --quick \
     --routines \
     --triggers \
