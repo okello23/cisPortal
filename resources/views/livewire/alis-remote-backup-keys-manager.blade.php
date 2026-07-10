@@ -14,6 +14,15 @@
                     <!-- <p class="text-muted mb-0">Manage facility database backup settings, central server provisioning, and script downloads in one place.</p> -->
                 </div>
                 <div class="d-flex gap-2">
+                    <a
+                        href="{{ asset('docs/a-lis-off-site-database-backup-restoration-sop-linuxubuntu-1.pdf') }}"
+                        class="btn btn-outline-dark rounded-pill px-4"
+                        download
+                        target="_blank"
+                        rel="noopener"
+                    >
+                        Download SOP PDF
+                    </a>
                     <button type="button" class="btn btn-dark rounded-pill px-4" wire:click="openCreateModal">
                         Add Backup Configuration
                     </button>
@@ -344,6 +353,22 @@
                                 {{ $errors->first() }}
                             </div>
                         @endif
+
+                        <div class="alert alert-light border rounded-4 d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+                            <div>
+                                <div class="fw-semibold">Backup Restoration SOP</div>
+                                <div class="small text-muted">Download the Linux Ubuntu off-site database backup and restoration SOP for step-by-step guidance.</div>
+                            </div>
+                            <a
+                                href="{{ asset('docs/a-lis-off-site-database-backup-restoration-sop-linuxubuntu-1.pdf') }}"
+                                class="btn btn-outline-dark rounded-pill px-4"
+                                download
+                                target="_blank"
+                                rel="noopener"
+                            >
+                                Download SOP
+                            </a>
+                        </div>
 
                         <div class="row g-3">
                             <div class="col-md-6">
