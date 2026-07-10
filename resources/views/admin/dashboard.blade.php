@@ -87,9 +87,6 @@
                         </table>
                     </div>
                 </div>
-                @if (auth()->user()->hasAnyRole([\App\Models\User::ROLE_ICT_ADMIN, \App\Models\User::ROLE_ICT_MANAGER, \App\Models\User::ROLE_ICT_SUPERVISOR]))
-                    <livewire:alis-remote-backup-key-reasons-manager />
-                @endif
             </div>
             <div class="col-lg-4">
                 <div class="content-card bg-white p-4">
@@ -103,6 +100,7 @@
                     <div class="d-grid gap-2">
                         <a href="{{ route('infrastructure.alis-remote-backup-keys.index') }}" class="btn btn-outline-success text-start rounded-4">Infrastructure: A-LIS Remote Backup Keys</a>
                         @foreach ([
+                            'alis-key-update-reasons' => 'A-LIS Key Update Reasons',
                             'systems' => 'Systems',
                             'modules' => 'Modules',
                             'regions' => 'Regions',

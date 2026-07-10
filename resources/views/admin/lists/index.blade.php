@@ -81,6 +81,86 @@
                 </div>
             </div>
         </div>
+    @elseif ($listKey === 'alis-key-update-reasons')
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="content-card bg-white p-4">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                        <h1 class="h4 mb-0">{{ $title }}</h1>
+                        @if ($editingRecord)
+                            <a href="{{ route('lists.index', $listKey) }}" class="btn btn-sm btn-outline-secondary rounded-pill">Cancel Edit</a>
+                        @endif
+                    </div>
+
+                    <p class="text-muted mb-4">Manage the predefined reasons staff select whenever an A-LIS backup SSH key is updated.</p>
+
+                    <form method="POST" action="{{ $editingRecord ? route('lists.update', [$listKey, $editingRecord->id]) : route('lists.store', $listKey) }}" class="row g-3">
+                        @csrf
+                        @if ($editingRecord)
+                            @method('PUT')
+                        @endif
+                        <div class="col-12">
+                            <label class="form-label">Reason Name</label>
+                            <input type="text" name="name" class="form-control" value="{{ old('name', $editingRecord?->name) }}" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Description</label>
+                            <textarea name="description" rows="3" class="form-control">{{ old('description', $editingRecord?->description) }}</textarea>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="active" name="active" value="1" @checked(old('active', $editingRecord?->active ?? true))>
+                                <label class="form-check-label" for="active">Active</label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <button class="btn btn-dark rounded-pill px-4">{{ $editingRecord ? 'Update Reason' : 'Save Reason' }}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="col-lg-8">
+                <div class="content-card bg-white p-4">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                        <h2 class="h5 mb-0">Saved Reasons</h2>
+                        <span class="small text-muted">{{ $records->total() }} total</span>
+                    </div>
+
+                    <div class="table-responsive border rounded-4 overflow-hidden">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Reason</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Update</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($records as $record)
+                                    <tr>
+                                        <td>
+                                            <div class="fw-semibold">{{ $record->name }}</div>
+                                            <div class="small text-muted">{{ $record->description ?: 'No description' }}</div>
+                                        </td>
+                                        <td>{{ $record->active ? 'Active' : 'Inactive' }}</td>
+                                        <td class="text-end">
+                                            <div class="d-flex justify-content-end gap-2 flex-wrap">
+                                                <a href="{{ route('lists.index', [$listKey, 'edit' => $record->id]) }}" class="btn btn-sm btn-outline-dark rounded-pill">Edit</a>
+                                                @include('admin.lists.partials.toggle-form', ['record' => $record])
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-3">
+                        {{ $records->links() }}
+                    </div>
+                </div>
+            </div>
+        </div>
     @else
         <div class="row g-4">
             <div class="col-lg-4">

@@ -52,6 +52,10 @@ class AlisRemoteBackupKeysManager extends Component
 
     public bool $showKeyModal = false;
 
+    public bool $showFacilityDetailsModal = false;
+
+    public ?int $confirmingDeactivationConfigurationId = null;
+
     public function mount(): void
     {
         abort_unless($this->canManage(Auth::user()), 403);
@@ -111,6 +115,54 @@ class AlisRemoteBackupKeysManager extends Component
         $this->normalizeSelections();
         $this->syncBackupDirectoryName($directoryNameGenerator);
         $this->loadSelectedConfigurationIntoForm($directoryNameGenerator);
+    }
+
+    public function openFacilityDetails(int $facilityId): void
+    {
+        $directoryNameGenerator = app(BackupDirectoryNameGenerator::class);
+        $this->facilityId = (string) $facilityId;
+        $this->syncFiltersFromFacility();
+        $this->normalizeSelections();
+        $this->syncBackupDirectoryName($directoryNameGenerator);
+        $this->loadSelectedConfigurationIntoForm($directoryNameGenerator);
+        $this->showFacilityDetailsModal = true;
+    }
+
+    public function closeFacilityDetailsModal(): void
+    {
+        $this->showFacilityDetailsModal = false;
+    }
+
+    public function confirmDeactivation(int $configurationId): void
+    {
+        $this->confirmingDeactivationConfigurationId = $configurationId;
+    }
+
+    public function cancelDeactivation(): void
+    {
+        $this->confirmingDeactivationConfigurationId = null;
+    }
+
+    public function deactivateConfirmedConfiguration(): void
+    {
+        if ($this->confirmingDeactivationConfigurationId === null) {
+            return;
+        }
+
+        $configurationId = $this->confirmingDeactivationConfigurationId;
+        $this->confirmingDeactivationConfigurationId = null;
+
+        $this->deactivateConfiguration($configurationId);
+    }
+
+    public function activateConfiguration(int $configurationId): void
+    {
+        $this->setConfigurationStatus($configurationId, false);
+    }
+
+    public function deactivateConfiguration(int $configurationId): void
+    {
+        $this->setConfigurationStatus($configurationId, true);
     }
 
     public function closeKeyModal(): void
@@ -194,7 +246,7 @@ class AlisRemoteBackupKeysManager extends Component
         $this->flashError = $configuration->last_provisioning_error ?: 'Provisioning failed. Please try again.';
     }
 
-    public function toggleConfigurationStatus(int $configurationId): void
+    private function setConfigurationStatus(int $configurationId, bool $isDisabling): void
     {
         $provisioningService = app(AlisBackupProvisioningService::class);
         $this->flashMessage = null;
@@ -205,8 +257,6 @@ class AlisRemoteBackupKeysManager extends Component
             ->where('facility_id', $configuration->facility_id)
             ->latest('updated_at')
             ->firstOrFail();
-
-        $isDisabling = $configuration->status !== AlisBackupConfiguration::STATUS_DISABLED;
 
         $key->forceFill([
             'status' => $isDisabling ? 'inactive' : 'active',

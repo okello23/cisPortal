@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AlisRemoteBackupKeyUpdateReason;
 use App\Models\ClosureReason;
 use App\Models\Designation;
 use App\Models\Department;
@@ -49,21 +50,37 @@ class ManagerListController extends Controller
         }
 
         [$modelClass, $fields, $title] = $this->resolveList($list);
-        $recordsQuery = $modelClass::query()->orderBy('sort_order')->orderBy('name');
+        $recordsQuery = $modelClass::query();
 
         if ($list === 'facilities') {
+            $recordsQuery->orderBy('sort_order')->orderBy('name');
             $recordsQuery->with('region');
+        }
+
+        if ($list === 'alis-key-update-reasons') {
+            $recordsQuery->orderByDesc('active')->orderBy('name');
+        }
+
+        if (! in_array($list, ['facilities', 'alis-key-update-reasons'], true)) {
+            $recordsQuery->orderBy('sort_order')->orderBy('name');
+        }
+
+        $editingRecord = null;
+
+        if ($list === 'alis-key-update-reasons' && request()->filled('edit')) {
+            $editingRecord = $modelClass::query()->findOrFail((int) request()->query('edit'));
         }
 
         return view('admin.lists.index', [
             'listKey' => $list,
             'title' => $title,
-            'records' => $list === 'facilities'
+            'records' => in_array($list, ['facilities', 'alis-key-update-reasons'], true)
                 ? $recordsQuery->paginate(10)->withQueryString()
                 : $recordsQuery->get(),
             'fields' => $fields,
             'systems' => SupportSystem::query()->where('active', true)->orderBy('name')->get(),
             'regions' => Region::query()->where('active', true)->orderBy('name')->get(),
+            'editingRecord' => $editingRecord,
         ]);
     }
 
@@ -141,6 +158,16 @@ class ManagerListController extends Controller
 
     private function validatePayload(Request $request, string $modelClass, array $fields, ?Model $record = null): array
     {
+        if ($modelClass === AlisRemoteBackupKeyUpdateReason::class) {
+            return $request->validate([
+                'name' => ['required', 'string', 'max:255', Rule::unique('alis_remote_backup_key_update_reasons', 'name')->ignore($record?->getKey())],
+                'description' => ['nullable', 'string'],
+                'active' => ['nullable', 'boolean'],
+            ]) + [
+                'active' => $request->boolean('active', true),
+            ];
+        }
+
         /** @var Model $model */
         $model = new $modelClass;
 
@@ -211,6 +238,7 @@ class ManagerListController extends Controller
     private function resolveList(string $list): array
     {
         return match ($list) {
+            'alis-key-update-reasons' => [AlisRemoteBackupKeyUpdateReason::class, ['name', 'description', 'active'], 'A-LIS Key Update Reasons'],
             'systems' => [SupportSystem::class, ['name', 'code', 'description', 'sort_order', 'active'], 'Systems'],
             'modules' => [SupportModule::class, ['system_id', 'name', 'code', 'description', 'sort_order', 'active'], 'Modules'],
             'regions' => [Region::class, ['name', 'code', 'description', 'sort_order', 'active'], 'Regions'],
