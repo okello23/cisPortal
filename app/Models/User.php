@@ -4,16 +4,18 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Illuminate\Auth\Passwords\CanResetPassword;
+use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-class User extends Authenticatable
+class User extends Authenticatable implements CanResetPasswordContract
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use CanResetPassword, HasFactory, Notifiable;
 
     public const ROLE_ICT_ADMIN = 'ict_admin';
     public const ROLE_ICT_MANAGER = 'ict_manager';
@@ -33,6 +35,8 @@ class User extends Authenticatable
         'role',
         'active',
         'password',
+        'force_password_change',
+        'password_changed_at',
     ];
 
     /**
@@ -56,6 +60,8 @@ class User extends Authenticatable
             'active' => 'boolean',
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'force_password_change' => 'boolean',
+            'password_changed_at' => 'datetime',
         ];
     }
 
@@ -78,5 +84,20 @@ class User extends Authenticatable
             self::ROLE_ICT_SUPPORT_STAFF => 'ICT Support Staff',
             self::ROLE_DEVELOPER => 'Developer',
         ];
+    }
+
+    public function requiresPasswordChange(): bool
+    {
+        if ($this->force_password_change || $this->password_changed_at === null) {
+            return true;
+        }
+
+        return $this->password_changed_at->lt(now()->subDays(90));
+    }
+
+    public function passwordExpired(): bool
+    {
+        return $this->password_changed_at !== null
+            && $this->password_changed_at->lt(now()->subDays(90));
     }
 }

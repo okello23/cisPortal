@@ -138,6 +138,8 @@ class DatabaseSeeder extends Seeder
             'role' => 'ict_admin',
             'active' => true,
             'password' => Hash::make('password123'),
+            'force_password_change' => true,
+            'password_changed_at' => null,
         ]);
 
         User::query()->updateOrCreate(['email' => 'supervisor@cphl.go.ug'], [
@@ -146,6 +148,8 @@ class DatabaseSeeder extends Seeder
             'role' => 'ict_supervisor',
             'active' => true,
             'password' => Hash::make('password123'),
+            'force_password_change' => true,
+            'password_changed_at' => null,
         ]);
 
         User::query()->updateOrCreate(['email' => 'support@cphl.go.ug'], [
@@ -154,6 +158,8 @@ class DatabaseSeeder extends Seeder
             'role' => 'ict_support_staff',
             'active' => true,
             'password' => Hash::make('password123'),
+            'force_password_change' => true,
+            'password_changed_at' => null,
         ]);
 
         User::query()->updateOrCreate(['email' => 'manager@cphl.go.ug'], [
@@ -162,6 +168,8 @@ class DatabaseSeeder extends Seeder
             'role' => 'ict_manager',
             'active' => true,
             'password' => Hash::make('password123'),
+            'force_password_change' => true,
+            'password_changed_at' => null,
         ]);
 
         User::query()->updateOrCreate(['email' => 'developer@cphl.go.ug'], [
@@ -170,6 +178,8 @@ class DatabaseSeeder extends Seeder
             'role' => 'developer',
             'active' => true,
             'password' => Hash::make('password123'),
+            'force_password_change' => true,
+            'password_changed_at' => null,
         ]);
     }
 }

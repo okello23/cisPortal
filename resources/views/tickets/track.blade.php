@@ -32,14 +32,20 @@
                                 <p class="text-uppercase text-muted small mb-1">Ticket Number</p>
                                 <h2 class="h3 mb-0">{{ $ticket->ticket_number }}</h2>
                             </div>
-                            <span class="badge text-bg-{{ $ticket->status?->color ?? 'secondary' }} fs-6">{{ $ticket->status?->name }}</span>
+                            <hr>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                @if (! empty($reportUrl))
+                                    <a href="{{ $reportUrl }}" class="btn btn-sm btn-outline-dark rounded-pill">Download Resolution Report</a>
+                                @endif
+                                <span class="badge text-bg-{{ $ticket->status?->color ?? 'secondary' }} fs-6">{{ $ticket->status?->name }}</span>
+                            </div>
                         </div>
 
                         <div class="row g-3">
-                            <div class="col-md-6"><strong>Assigned Staff:</strong> {{ $ticket->assignedStaff?->name ?? 'Pending assignment' }}</div>
-                            <div class="col-md-6"><strong>Designation:</strong> {{ $ticket->designation?->name ?? 'N/A' }}</div>
-                            <div class="col-md-6"><strong>Lab Manager:</strong> {{ $ticket->lab_manager_name ?? 'N/A' }}</div>
-                            <div class="col-md-6"><strong>Lab Manager Email:</strong> {{ $ticket->lab_manager_email ?? 'N/A' }}</div>
+                            <div class="col-md-6"><strong>ICT Support Staff:</strong> {{ $ticket->assignedStaff?->name ?? 'Pending assignment' }}</div>
+                            <div class="col-md-6"><strong>Staff Email:</strong> {{ $ticket->assignedStaff?->email ?? '' }}</div>
+                                <div class="col-md-6"><strong>Lab Manager:</strong> {{ $ticket->lab_manager_name ?? 'N/A' }}</div>
+                                <div class="col-md-6"><strong>Lab Manager Email:</strong> {{ $ticket->lab_manager_email ?? 'N/A' }}</div>
                             <div class="col-md-6"><strong>District:</strong> {{ $ticket->district_name ?? 'N/A' }}</div>
                             <div class="col-md-6"><strong>Issue Began:</strong> {{ optional($ticket->issue_started_at)->format('d M Y') ?? 'N/A' }}</div>
                             <div class="col-md-6"><strong>Expected Resolution Date:</strong> {{ optional($ticket->expected_resolution_date)->format('d M Y') ?? 'Not yet set' }}</div>
@@ -53,26 +59,6 @@
                                             {{ $ticket->attachmentFilename() }}
                                         </a>
                                     </div>
-
-                                    @if ($ticket->hasImageAttachment())
-                                        <div class="mt-3">
-                                            <img
-                                                src="{{ $ticket->attachmentUrl() }}"
-                                                alt="Ticket attachment preview"
-                                                class="img-fluid rounded-4 border"
-                                                style="max-height: 420px;"
-                                            >
-                                        </div>
-                                    @elseif ($ticket->hasPdfAttachment())
-                                        <div class="mt-3">
-                                            <iframe
-                                                src="{{ $ticket->attachmentUrl() }}"
-                                                title="Ticket attachment preview"
-                                                class="w-100 rounded-4 border"
-                                                style="height: 420px;"
-                                            ></iframe>
-                                        </div>
-                                    @endif
                                 @else
                                     No attachment uploaded.
                                 @endif
@@ -87,6 +73,9 @@
                         @elseif ($ticket->feedback)
                             <div class="alert alert-success rounded-4 mt-4 mb-0">
                                 Feedback received. Thank you for rating the support experience.
+                                @if (! empty($reportUrl))
+                                    <a href="{{ $reportUrl }}" class="alert-link ms-1">Download the resolution report</a>.
+                                @endif
                             </div>
                         @endif
                     @else

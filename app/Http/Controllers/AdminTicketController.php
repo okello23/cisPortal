@@ -21,8 +21,11 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\CarbonInterval;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -41,6 +44,7 @@ class AdminTicketController extends Controller
 
         $tickets = Ticket::query()
             ->with(['system', 'status', 'priorityLevel', 'assignedStaff'])
+            ->whereNotIn('submission_review_status', ['QUARANTINED', 'REJECTED_SPAM'])
             ->when($request->filled('status'), fn ($query) => $query->where('status_id', $request->integer('status')))
             ->when($request->filled('system'), fn ($query) => $query->where('system_id', $request->integer('system')))
             ->when($request->filled('search'), function ($query) use ($request) {
@@ -66,6 +70,7 @@ class AdminTicketController extends Controller
     {
         $this->authorizeTicket($ticket);
         $user = Auth::user();
+        $assignedStatusId = TicketStatus::query()->where('code', 'assigned')->value('id');
 
         $ticket->load([
             'system',
@@ -81,6 +86,7 @@ class AdminTicketController extends Controller
             'feedback',
             'resolutionCategory',
             'closureReason',
+            'attachments',
             'comments.author',
             'statusLogs' => fn ($query) => $query
                 ->with(['oldStatus', 'newStatus', 'changedBy'])
@@ -90,11 +96,12 @@ class AdminTicketController extends Controller
         return view('admin.tickets.show', [
             'ticket' => $ticket,
             'statusHistory' => $this->buildStatusHistory($ticket),
-            'statuses' => $this->availableStatusesFor($user),
+            'statuses' => $this->availableStatusesFor($user, $ticket),
             'staff' => $this->assignableUsersFor($user, $ticket),
             'resolutionCategories' => ResolutionCategory::query()->where('active', true)->orderBy('sort_order')->get(),
             'closureReasons' => ClosureReason::query()->where('active', true)->orderBy('sort_order')->get(),
             'isWorkflowManager' => $this->isWorkflowManager($user),
+            'assignedStatusId' => $assignedStatusId,
         ]);
     }
 
@@ -119,6 +126,25 @@ class AdminTicketController extends Controller
         ]);
     }
 
+    public function downloadIncidentResolutionReport(Ticket $ticket): Response
+    {
+        $this->authorizeTicket($ticket);
+
+        $ticket->load('feedback');
+
+        abort_if(blank($ticket->feedback?->incident_report_path), 404);
+        abort_unless(Storage::disk('local')->exists($ticket->feedback->incident_report_path), 404);
+
+        return response(
+            Storage::disk('local')->get($ticket->feedback->incident_report_path),
+            200,
+            [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="'.$ticket->ticket_number.'-incident-resolution-report.pdf"',
+            ]
+        );
+    }
+
     public function update(Request $request, Ticket $ticket): RedirectResponse
     {
         $this->authorizeTicket($ticket);
@@ -130,6 +156,10 @@ class AdminTicketController extends Controller
             'comment' => ['nullable', 'string'],
             'resolution_category_id' => ['nullable', 'exists:resolution_categories,id'],
             'closure_reason_id' => ['nullable', 'exists:closure_reasons,id'],
+            'root_cause_analysis' => ['nullable', 'string'],
+            'verification_testing' => ['nullable', 'string'],
+            'data_loss_risk' => ['nullable', 'string', Rule::in(['none', 'partial', 'full'])],
+            'services_disrupted' => ['nullable', 'string'],
             'work_done' => ['nullable', 'string'],
             'recommendations' => ['nullable', 'string'],
             'challenges_faced' => ['nullable', 'string'],
@@ -158,6 +188,10 @@ class AdminTicketController extends Controller
         if (in_array($status->code, ['resolved', 'closed'], true)) {
             $ticket->resolution_summary = $validated['work_done'] ?? null;
         } else {
+            $ticket->root_cause_analysis = null;
+            $ticket->verification_testing = null;
+            $ticket->data_loss_risk = null;
+            $ticket->services_disrupted = null;
             $ticket->work_done = null;
             $ticket->recommendations = null;
             $ticket->challenges_faced = null;
@@ -495,9 +529,13 @@ class AdminTicketController extends Controller
         ]);
     }
 
-    private function availableStatusesFor(User $user)
+    private function availableStatusesFor(User $user, Ticket $ticket)
     {
         $query = TicketStatus::query()->where('active', true)->orderBy('sort_order');
+
+        if ($ticket->status?->code === 'assigned') {
+            return $query->whereIn('code', ['escalated', 'resolved'])->get();
+        }
 
         if ($this->isWorkflowManager($user)) {
             return $query->get();
@@ -509,8 +547,16 @@ class AdminTicketController extends Controller
     private function assignableUsersFor(User $user, Ticket $ticket)
     {
         $roles = $this->isWorkflowManager($user)
-            ? [User::ROLE_ICT_SUPPORT_STAFF, User::ROLE_DEVELOPER, User::ROLE_ICT_MANAGER, User::ROLE_ICT_SUPERVISOR]
-            : [User::ROLE_DEVELOPER, User::ROLE_ICT_MANAGER, User::ROLE_ICT_SUPERVISOR];
+            ? [User::ROLE_ICT_SUPPORT_STAFF, User::ROLE_DEVELOPER, User::ROLE_ICT_SUPERVISOR, User::ROLE_ICT_ADMIN, User::ROLE_ICT_MANAGER]
+            : [User::ROLE_DEVELOPER, User::ROLE_ICT_SUPERVISOR, User::ROLE_ICT_ADMIN, User::ROLE_ICT_MANAGER];
+
+        $rolePriority = [
+            User::ROLE_ICT_SUPPORT_STAFF => 1,
+            User::ROLE_DEVELOPER => 2,
+            User::ROLE_ICT_SUPERVISOR => 3,
+            User::ROLE_ICT_ADMIN => 4,
+            User::ROLE_ICT_MANAGER => 5,
+        ];
 
         return User::query()
             ->where('active', true)
@@ -521,8 +567,18 @@ class AdminTicketController extends Controller
                     $query->orWhere('id', $ticket->assigned_to);
                 }
             })
-            ->orderBy('name')
-            ->get();
+            ->get()
+            ->sort(function (User $left, User $right) use ($rolePriority) {
+                $leftPriority = $rolePriority[$left->role] ?? 99;
+                $rightPriority = $rolePriority[$right->role] ?? 99;
+
+                if ($leftPriority !== $rightPriority) {
+                    return $leftPriority <=> $rightPriority;
+                }
+
+                return strcasecmp($left->name, $right->name);
+            })
+            ->values();
     }
 
     private function validateWorkflowUpdate(Ticket $ticket, User $user, TicketStatus $status, ?User $assignee): void
@@ -532,15 +588,22 @@ class AdminTicketController extends Controller
         if ($assignee && ! $assignee->hasAnyRole([
             User::ROLE_ICT_SUPPORT_STAFF,
             User::ROLE_DEVELOPER,
+            User::ROLE_ICT_ADMIN,
             User::ROLE_ICT_MANAGER,
             User::ROLE_ICT_SUPERVISOR,
         ])) {
             throw ValidationException::withMessages([
-                'assigned_to' => 'Tickets can only be assigned to support, developer, manager, or supervisor accounts.',
+                'assigned_to' => 'Tickets can only be assigned to support, developer, admin, manager, or supervisor accounts.',
             ]);
         }
 
         if ($this->isWorkflowManager($user)) {
+            if ($ticket->status?->code === 'new' && ! $assignee) {
+                throw ValidationException::withMessages([
+                    'assigned_to' => 'Choose the support staff member receiving this new ticket.',
+                ]);
+            }
+
             if ($assignee && ! $payload->filled('expected_resolution_date')) {
                 throw ValidationException::withMessages([
                     'expected_resolution_date' => 'Expected resolution date is required when assigning a ticket.',
@@ -569,16 +632,16 @@ class AdminTicketController extends Controller
                 ]);
             }
 
-            if (! $assignee->hasAnyRole([User::ROLE_DEVELOPER, User::ROLE_ICT_MANAGER, User::ROLE_ICT_SUPERVISOR])) {
+            if (! $assignee->hasAnyRole([User::ROLE_DEVELOPER, User::ROLE_ICT_ADMIN, User::ROLE_ICT_MANAGER, User::ROLE_ICT_SUPERVISOR])) {
                 throw ValidationException::withMessages([
-                    'assigned_to' => 'Assigned staff can only escalate tickets to a developer, ICT manager, or software development supervisor.',
+                    'assigned_to' => 'Assigned staff can only escalate tickets to a developer, admin, ICT manager, or software development supervisor.',
                 ]);
             }
         }
 
         if ($status->code === 'escalated' && (! $assignee || $assignee->id === $ticket->assigned_to)) {
             throw ValidationException::withMessages([
-                'assigned_to' => 'Select a developer, ICT manager, or software development supervisor to receive the escalation.',
+                'assigned_to' => 'Select a developer, admin, ICT manager, or software development supervisor to receive the escalation.',
             ]);
         }
 
@@ -596,6 +659,22 @@ class AdminTicketController extends Controller
 
         if (in_array($status->code, ['resolved', 'closed'], true)) {
             $messages = [];
+
+            if (! $payload->filled('root_cause_analysis')) {
+                $messages['root_cause_analysis'] = 'Root cause analysis is required when resolving or closing a ticket.';
+            }
+
+            if (! $payload->filled('verification_testing')) {
+                $messages['verification_testing'] = 'Verification / testing is required when resolving or closing a ticket.';
+            }
+
+            if (! $payload->filled('data_loss_risk')) {
+                $messages['data_loss_risk'] = 'Data loss risk is required when resolving or closing a ticket.';
+            }
+
+            if (! $payload->filled('services_disrupted')) {
+                $messages['services_disrupted'] = 'Services disrupted is required when resolving or closing a ticket.';
+            }
 
             if (! $payload->filled('work_done')) {
                 $messages['work_done'] = 'Work done is required when resolving or closing a ticket.';

@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>A-LIS Remote Backup Keys SOP</title>
+    <style>
+        :root {
+            --ink: #183247;
+            --muted: #5b6b79;
+            --line: #d7dee5;
+            --panel: #ffffff;
+            --wash: #f4efe4;
+            --accent: #0f766e;
+            --accent-dark: #0b5c56;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Arial, sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at top right, rgba(15, 118, 110, 0.10), transparent 24%),
+                linear-gradient(180deg, #fbfcfd 0%, var(--wash) 100%);
+            line-height: 1.6;
+        }
+
+        .page {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 3rem 1.5rem 4rem;
+        }
+
+        .hero,
+        .section,
+        .notice {
+            background: var(--panel);
+            border: 1px solid rgba(24, 50, 71, 0.08);
+            border-radius: 24px;
+            box-shadow: 0 18px 40px rgba(24, 50, 71, 0.08);
+        }
+
+        .hero {
+            padding: 2rem 2.2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .section {
+            padding: 1.6rem 1.8rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .notice {
+            padding: 1rem 1.2rem;
+            margin: 1rem 0;
+            border-left: 6px solid var(--accent);
+        }
+
+        .eyebrow {
+            margin: 0 0 0.35rem;
+            color: var(--accent-dark);
+            font-size: 0.82rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        h1,
+        h2,
+        h3 {
+            margin-top: 0;
+            letter-spacing: -0.03em;
+        }
+
+        h1 {
+            margin-bottom: 0.5rem;
+            font-size: 2.3rem;
+            line-height: 1.1;
+        }
+
+        h2 {
+            margin-bottom: 0.85rem;
+            font-size: 1.45rem;
+        }
+
+        h3 {
+            margin-bottom: 0.75rem;
+            font-size: 1.1rem;
+        }
+
+        p,
+        li {
+            color: var(--ink);
+            font-size: 0.98rem;
+        }
+
+        .muted {
+            color: var(--muted);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        .card {
+            padding: 1rem 1.1rem;
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .step {
+            padding-top: 0.4rem;
+            border-top: 1px solid var(--line);
+            margin-top: 1.1rem;
+        }
+
+        .step:first-of-type {
+            border-top: 0;
+            margin-top: 0;
+            padding-top: 0;
+        }
+
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 2rem;
+            margin-bottom: 0.7rem;
+            border-radius: 999px;
+            background: rgba(15, 118, 110, 0.12);
+            color: var(--accent-dark);
+            font-weight: 800;
+        }
+
+        ol,
+        ul {
+            margin: 0.4rem 0 0.8rem 1.25rem;
+            padding: 0;
+        }
+
+        code,
+        pre {
+            font-family: "Courier New", monospace;
+        }
+
+        pre {
+            margin: 0.8rem 0 1rem;
+            padding: 0.9rem 1rem;
+            overflow-x: auto;
+            border-radius: 16px;
+            background: #102431;
+            color: #e7f4f4;
+        }
+
+        .screenshot {
+            margin-top: 0.9rem;
+            padding: 1rem;
+            border: 2px dashed #b6c5cf;
+            border-radius: 18px;
+            background: #fafcfd;
+        }
+
+        .screenshot-title {
+            margin: 0 0 0.25rem;
+            font-weight: 700;
+        }
+
+        .caption {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .footer {
+            margin-top: 1.5rem;
+            color: var(--muted);
+            font-size: 0.92rem;
+            text-align: center;
+        }
+
+        @media print {
+            body {
+                background: #fff;
+            }
+
+            .page {
+                max-width: none;
+                padding: 0;
+            }
+
+            .hero,
+            .section,
+            .notice {
+                box-shadow: none;
+                break-inside: avoid;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero,
+            .section {
+                padding: 1.25rem;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <section class="hero">
+            <p class="eyebrow">Standard Operating Procedure</p>
+            <h1>A-LIS Remote Backup Keys</h1>
+            <p class="muted">Procedure for registering an A-LIS facility SSH public key in the CIS Portal for remote backup access management.</p>
+        </section>
+
+        <section class="section">
+            <h2>1. Purpose</h2>
+            <p>This SOP guides authorized CIS Portal users on how to register a facility A-LIS SSH public key in the CIS Portal so it can be deployed to the central backup server without manually editing the server-side <code>authorized_keys</code> file.</p>
+        </section>
+
+        <section class="section">
+            <h2>2. Scope And Roles</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>Use This SOP When</h3>
+                    <ul>
+                        <li>A facility is registering its first backup public key.</li>
+                        <li>A facility server has been rebuilt and the SSH key changed.</li>
+                        <li>An existing key must be updated in the CIS Portal.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>Authorized Roles</h3>
+                    <ul>
+                        <li>ICT Support Staff</li>
+                        <li>ICT Supervisor</li>
+                        <li>ICT Manager</li>
+                        <li>ICT Administrator</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>3. Prerequisites</h2>
+            <ol>
+                <li>The facility A-LIS server has already generated its SSH public key.</li>
+                <li>The public key has been copied from the facility server.</li>
+                <li>The user has valid CIS Portal login credentials.</li>
+                <li>The facility already exists in the CIS Portal facility list.</li>
+            </ol>
+            <div class="notice">
+                <strong>Expected key format</strong>
+                <pre>ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... alis-offsite-backup</pre>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>4. Procedure: Register The Public Key In The CIS Portal</h2>
+
+            <div class="step">
+                <div class="step-number">1</div>
+                <h3>Log Into The CIS Portal</h3>
+                <ol>
+                    <li>Open the CIS Portal in your browser.</li>
+                    <li>Enter your username or email address.</li>
+                    <li>Enter your password.</li>
+                    <li>Click <code>Staff Login</code>.</li>
+                </ol>
+                <div class="screenshot">
+                    <p class="screenshot-title">Screenshot Placeholder: Login Screen</p>
+                    <p class="caption">Figure 1. CIS Portal login page</p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <h3>Open The A-LIS Remote Backup Keys Module</h3>
+                <ol>
+                    <li>From the staff dashboard, click <code>Infrastructure</code> in the top navigation.</li>
+                    <li>Select <code>A-LIS Remote Backup Keys</code>.</li>
+                </ol>
+                <p>You should now see the A-LIS key registry page with the registered keys table, deployment controls, and audit history.</p>
+                <div class="screenshot">
+                    <p class="screenshot-title">Screenshot Placeholder: A-LIS Remote Backup Keys Main Page</p>
+                    <p class="caption">Figure 2. A-LIS Remote Backup Keys registry page</p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">3</div>
+                <h3>Start A New Key Registration</h3>
+                <ol>
+                    <li>Click the <code>Add Key</code> button.</li>
+                    <li>Wait for the key registration modal to open.</li>
+                </ol>
+                <p>The modal includes the facility selector and the SSH public key input area.</p>
+                <div class="screenshot">
+                    <p class="screenshot-title">Screenshot Placeholder: Add Key Modal</p>
+                    <p class="caption">Figure 3. Add Key modal for registering a facility public key</p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">4</div>
+                <h3>Select The Facility</h3>
+                <ol>
+                    <li>Click the searchable <code>Facility</code> dropdown.</li>
+                    <li>Search using any of the following:
+                        <ul>
+                            <li>facility name</li>
+                            <li>district</li>
+                            <li>region</li>
+                            <li>facility code</li>
+                        </ul>
+                    </li>
+                    <li>Select the correct facility from the results list.</li>
+                </ol>
+            </div>
+
+            <div class="step">
+                <div class="step-number">5</div>
+                <h3>Paste The SSH Public Key</h3>
+                <ol>
+                    <li>Paste the copied public key into the <code>SSH Public Key</code> field.</li>
+                    <li>Confirm that the value:
+                        <ul>
+                            <li>starts with <code>ssh-ed25519</code></li>
+                            <li>is on one line only</li>
+                            <li>does not contain private key content</li>
+                        </ul>
+                    </li>
+                </ol>
+                <pre>ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... alis-offsite-backup</pre>
+            </div>
+
+            <div class="step">
+                <div class="step-number">6</div>
+                <h3>Save The Key</h3>
+                <ol>
+                    <li>Click <code>Save Key</code>.</li>
+                    <li>Wait for the system to validate and store the key.</li>
+                </ol>
+                <p>If successful, the portal will generate a fingerprint, save the key, set deployment status to <code>pending</code>, and record the action in audit history.</p>
+                <div class="notice">
+                    <strong>Expected success message</strong>
+                    <pre>Key saved successfully. Pending deployment.</pre>
+                </div>
+                <div class="screenshot">
+                    <p class="screenshot-title">Screenshot Placeholder: Key Saved Successfully</p>
+                    <p class="caption">Figure 4. Successful key registration and pending deployment status</p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">7</div>
+                <h3>Confirm The Registration</h3>
+                <ol>
+                    <li>Review the <code>Current Key Status</code> panel on the right.</li>
+                    <li>Confirm the correct facility is shown.</li>
+                    <li>Confirm the fingerprint is present.</li>
+                    <li>Confirm deployment status is <code>pending</code>.</li>
+                    <li>Review the registry table and audit history to confirm the action was recorded.</li>
+                </ol>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>5. Updating An Existing Key</h2>
+            <ol>
+                <li>Open the same key registration workflow using <code>Add Key</code> or <code>Edit</code>.</li>
+                <li>Select the facility that already has a registered key.</li>
+                <li>Paste the replacement public key.</li>
+                <li>Select an <code>Update Reason</code>.</li>
+                <li>If the reason is <code>Other</code>, provide a supporting comment.</li>
+                <li>Click <code>Save Key</code>.</li>
+            </ol>
+            <p>The system will preserve audit history and mark the updated key for deployment.</p>
+        </section>
+
+        <section class="section">
+            <h2>6. Expected Result</h2>
+            <ul>
+                <li>The facility public key is stored in the CIS Portal.</li>
+                <li>The fingerprint is generated and saved.</li>
+                <li>The key appears in the A-LIS registry table.</li>
+                <li>Deployment status is set to <code>pending</code>.</li>
+                <li>The action is captured in audit history.</li>
+            </ul>
+        </section>
+
+        <section class="section">
+            <h2>7. Troubleshooting</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>Key Rejected</h3>
+                    <ul>
+                        <li>Confirm the key starts with <code>ssh-ed25519</code>.</li>
+                        <li>Make sure the key is on one line only.</li>
+                        <li>Make sure it is a public key, not a private key.</li>
+                        <li>Check that the key is not already assigned to another facility.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>Facility Not Found</h3>
+                    <ul>
+                        <li>Verify the facility exists in the CIS Portal facility list.</li>
+                        <li>Search by district, region, or facility code.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>Update Reason Required</h3>
+                    <p>This is expected when changing a facility that already has a registered active key.</p>
+                </div>
+                <div class="card">
+                    <h3>Status Still Pending</h3>
+                    <p>The key was saved correctly, but it still needs to be deployed using <code>Deploy Keys</code>.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>8. Recommended Screenshot Pack</h2>
+            <ol>
+                <li>Login screen</li>
+                <li>A-LIS Remote Backup Keys main page</li>
+                <li>Add Key modal</li>
+                <li>Success message and pending deployment state</li>
+            </ol>
+        </section>
+
+        <p class="footer">Prepared for CIS Portal operational use. Update screenshots whenever the interface changes.</p>
+    </div>
+</body>
+</html>

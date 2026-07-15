@@ -1,6 +1,10 @@
 @extends('layouts.app', ['title' => 'Report ICT Issue'])
 
 @section('content')
+    @php
+        $attachmentMaxFiles = max(1, (int) config('cis_submission.attachments.max_files', 5));
+        $attachmentMaxSizeMb = max(1, (int) config('cis_submission.attachments.max_size_mb', 10));
+    @endphp
     <div class="row justify-content-center">
         <div class="col-xl-10">
             <div class="content-card bg-white p-4 p-lg-5">
@@ -12,8 +16,14 @@
                     </div>
                 </div>
 
-                <form method="POST" action="{{ route('tickets.store') }}" enctype="multipart/form-data" class="row g-4">
+                <form method="POST" action="{{ route('tickets.store') }}" enctype="multipart/form-data" class="row g-4" id="public-ticket-form">
                     @csrf
+                    <input type="hidden" name="submission_uuid" value="{{ old('submission_uuid', $submissionUuid) }}">
+                    <input type="hidden" name="form_rendered_at" value="{{ old('form_rendered_at', $formRenderedAt) }}">
+                    <div class="position-absolute start-0 top-0 translate-middle-y visually-hidden" aria-hidden="true">
+                        <label for="website_url">Website</label>
+                        <input type="text" name="website_url" id="website_url" autocomplete="off" tabindex="-1">
+                    </div>
                     <div class="col-12">
                         <fieldset class="app-fieldset">
                             <legend>System Information</legend>
@@ -107,18 +117,50 @@
                                     <textarea name="description" rows="5" class="form-control" required>{{ old('description') }}</textarea>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Attachment/Screenshot</label>
-                                    <input type="file" name="attachment" class="form-control">
+                                    <label class="form-label">Attachments / Screenshots</label>
+                                    <input type="file" name="attachments[]" class="form-control" multiple accept=".pdf,.png,.jpg,.jpeg,.txt">
+                                    <small class="text-muted d-block">You can upload up to {{ $attachmentMaxFiles }} attachments. Each file must be {{ $attachmentMaxSizeMb }} MB or smaller.</small>
+                                    <small class="text-muted d-block">If you have more than 2 screenshots, combine them into one PDF and attach that PDF.</small>
+                                </div>
+                                @if ($turnstileEnabled && filled($turnstileSiteKey))
+                                    <div class="col-12">
+                                        <div class="cf-turnstile" data-sitekey="{{ $turnstileSiteKey }}"></div>
+                                    </div>
+                                @endif
                                 </div>
                             </div>
                         </fieldset>
                     </div>
 
                     <div class="col-12 d-flex justify-content-end">
-                        <button class="btn btn-success btn-lg rounded-pill px-4">Submit Ticket</button>
+                        <button class="btn btn-success btn-lg rounded-pill px-4" type="submit" id="public-ticket-submit">Submit Ticket</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 @endsection
+
+@if ($turnstileEnabled && filled($turnstileSiteKey))
+    @push('scripts')
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    @endpush
+@endif
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('public-ticket-form');
+            const submitButton = document.getElementById('public-ticket-submit');
+
+            if (!form || !submitButton) {
+                return;
+            }
+
+            form.addEventListener('submit', function () {
+                submitButton.disabled = true;
+                submitButton.textContent = 'Submitting...';
+            }, { once: true });
+        });
+    </script>
+@endpush

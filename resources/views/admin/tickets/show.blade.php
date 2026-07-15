@@ -2,12 +2,16 @@
 
 @section('content')
     @php
-        $isCompletedTicket = in_array($ticket->status?->code, ['resolved', 'closed'], true);
+        $statusCode = strtolower(trim((string) $ticket->status?->code));
+        $statusName = strtolower(trim((string) $ticket->status?->name));
+        $isClosedTicket = $ticket->closed_at !== null || $statusCode === 'closed' || $statusName === 'closed';
+        $isResolvedTicket = $ticket->resolved_at !== null || $statusCode === 'resolved' || $statusName === 'resolved';
+        $isCompletedTicket = $isClosedTicket || $isResolvedTicket;
         $completionLog = $ticket->statusLogs
             ->filter(fn ($log) => in_array($log->newStatus?->code, ['resolved', 'closed'], true))
             ->sortByDesc('created_at')
             ->first();
-        $turnaroundInterval = ($ticket->status?->code === 'closed' ? $ticket->closed_at : $ticket->resolved_at)?->diff($ticket->created_at);
+        $turnaroundInterval = ($isClosedTicket ? $ticket->closed_at : $ticket->resolved_at)?->diff($ticket->created_at);
     @endphp
 
     <div class="row g-4">
@@ -18,7 +22,14 @@
                         <p class="text-uppercase text-muted fw-semibold small mb-1">Ticket Details</p>
                         <h1 class="h3 mb-0">{{ $ticket->ticket_number }}</h1>
                     </div>
-                    <span class="badge text-bg-{{ $ticket->status->color ?? 'secondary' }} fs-6">{{ $ticket->status->name }}</span>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        @if ($ticket->feedback?->incident_report_path)
+                            <a href="{{ route('admin.tickets.incident-resolution-report', $ticket) }}" class="btn btn-sm btn-outline-dark rounded-pill">
+                                Download Resolution Report
+                            </a>
+                        @endif
+                        <span class="badge text-bg-{{ $ticket->status->color ?? 'secondary' }} fs-6">{{ $ticket->status->name }}</span>
+                    </div>
                 </div>
 
                 <div class="row g-3">
@@ -49,52 +60,49 @@
   
                     <div class="col-12"><strong>Issue Description:</strong><br>{{ $ticket->description }}</div>
                     <div class="col-12">
-                        <strong>Attachment:</strong><br>
-                        @if ($ticket->hasAttachment())
-                            <a href="{{ $ticket->attachmentUrl() }}" target="_blank" rel="noopener">
-                                {{ $ticket->attachmentFilename() }}
-                            </a>
-
-                            @if ($ticket->hasImageAttachment())
-                                <div class="mt-3">
-                                    <img
-                                        src="{{ $ticket->attachmentUrl() }}"
-                                        alt="Ticket attachment preview"
-                                        class="img-fluid rounded-4 border"
-                                        style="max-height: 420px;"
-                                    >
+                        <strong>Attachments:</strong><br>
+                        @if ($ticket->attachments->isNotEmpty())
+                            @foreach ($ticket->attachments as $attachment)
+                                <div class="mb-3">
+                                    @if ($attachment->isPreviewableImage())
+                                        <div class="mb-2">
+                                            <a href="{{ $attachment->previewUrl() }}" target="_blank" rel="noopener">
+                                                <img
+                                                    src="{{ $attachment->previewUrl() }}"
+                                                    alt="{{ $attachment->original_filename }}"
+                                                    class="img-fluid rounded-3 border"
+                                                    style="max-height: 260px;"
+                                                >
+                                            </a>
+                                        </div>
+                                        <a href="{{ $attachment->downloadUrl() }}" rel="noopener">
+                                            {{ $attachment->original_filename }}
+                                        </a>
+                                    @else
+                                        <a href="{{ $attachment->downloadUrl() }}" rel="noopener">
+                                            {{ $attachment->original_filename }}
+                                        </a>
+                                    @endif
                                 </div>
-                            @elseif ($ticket->hasPdfAttachment())
-                                <div class="mt-3">
-                                    <iframe
-                                        src="{{ $ticket->attachmentUrl() }}"
-                                        title="Ticket attachment preview"
-                                        class="w-100 rounded-4 border"
-                                        style="height: 420px;"
-                                    ></iframe>
-                                </div>
-                            @endif
+                            @endforeach
+                        @elseif ($ticket->hasAttachment())
+                            <div>
+                                <a href="{{ $ticket->attachmentUrl() }}" target="_blank" rel="noopener">
+                                    {{ $ticket->attachmentFilename() }}
+                                </a>
+                            </div>
                         @else
                             No attachment uploaded.
                         @endif
                     </div>
+                    <div class="col-12"><strong>Root Cause Analysis:</strong><br>{{ $ticket->root_cause_analysis ?? 'Not recorded yet.' }}</div>
+                    <div class="col-12"><strong>Verification / Testing:</strong><br>{{ $ticket->verification_testing ?? 'Not recorded yet.' }}</div>
+                    <div class="col-md-6"><strong>Data Loss Risk:</strong><br>{{ $ticket->data_loss_risk ? ucfirst($ticket->data_loss_risk) : 'Not recorded yet.' }}</div>
+                    <div class="col-md-6"><strong>Services Disrupted:</strong><br>{{ $ticket->services_disrupted ?? 'Not recorded yet.' }}</div>
                     <div class="col-12"><strong>Resolution Summary:</strong><br>{{ $ticket->resolution_summary ?? 'No resolution summary yet.' }}</div>
                     <div class="col-12"><strong>Work Done:</strong><br>{{ $ticket->work_done ?? 'Not recorded yet.' }}</div>
                     <div class="col-12"><strong>Recommendations:</strong><br>{{ $ticket->recommendations ?? 'Not recorded yet.' }}</div>
                     <div class="col-12"><strong>Challenges Faced:</strong><br>{{ $ticket->challenges_faced ?? 'No challenges recorded.' }}</div>
-                    <div class="col-12">
-                        <strong>Customer Feedback:</strong><br>
-                        @if ($ticket->feedback)
-                            Timeliness {{ $ticket->feedback->timeliness_rating }}/5,
-                            Completeness {{ $ticket->feedback->completeness_rating }}/5,
-                            Overall {{ $ticket->feedback->overall_satisfaction_rating }}/5
-                            @if ($ticket->feedback->comments)
-                                <br>{{ $ticket->feedback->comments }}
-                            @endif
-                        @else
-                            No customer rating submitted yet.
-                        @endif
-                    </div>
                 </div>
             </div>
 
@@ -145,53 +153,102 @@
 
             <div class="content-card bg-white p-4">
                 @if ($isCompletedTicket)
-                    <h2 class="h5 mb-3">Resolution Highlights</h2>
-                    <p class="text-muted small mb-3">This ticket is already {{ $ticket->status->name }}. Key closure details are shown below.</p>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <strong>{{ $ticket->status->code === 'closed' ? 'Closed On' : 'Resolved On' }}:</strong><br>
-                            {{ optional($ticket->status->code === 'closed' ? $ticket->closed_at : $ticket->resolved_at)->format('d M Y H:i') ?? 'N/A' }}
-                        </div>
-                        <div class="col-md-6">
-                            <strong>{{ $ticket->status->code === 'closed' ? 'Closed By' : 'Resolved By' }}:</strong><br>
-                            {{ $completionLog?->changedBy?->name ?? $ticket->assignedStaff?->name ?? 'N/A' }}
-                        </div>
-                        <div class="col-md-6">
-                            <strong>Handled By:</strong><br>
-                            {{ $ticket->assignedStaff?->name ?? 'N/A' }}
-                        </div>
-                        <div class="col-md-6">
-                            <strong>Turnaround Time:</strong><br>
-                            {{ $turnaroundInterval ? \Carbon\CarbonInterval::instance($turnaroundInterval)->cascade()->forHumans(short: true) : 'N/A' }}
-                        </div>
-                        <div class="col-md-6">
-                            <strong>Expected Resolution Date:</strong><br>
-                            {{ optional($ticket->expected_resolution_date)->format('d M Y') ?? 'N/A' }}
-                        </div>
-                        <div class="col-md-6">
-                            <strong>Resolution Category:</strong><br>
-                            {{ $ticket->resolutionCategory?->name ?? 'N/A' }}
-                        </div>
-                        @if ($ticket->status->code === 'closed')
-                            <div class="col-md-6">
-                                <strong>Closure Reason:</strong><br>
-                                {{ $ticket->closureReason?->name ?? 'N/A' }}
+                    @if ($isClosedTicket)
+                        @php
+                            $overallRating = (int) ($ticket->feedback?->overall_satisfaction_rating ?? 0);
+                        @endphp
+                        <h2 class="h5 mb-3">Customer Rating</h2>
+                        <p class="text-muted small mb-3">This ticket is closed. The support experience rating shared by the requestor is shown below.</p>
+
+                        @if ($ticket->feedback)
+                            <div class="mb-3" aria-label="Overall rating {{ $overallRating }} out of 5">
+                                @for ($star = 1; $star <= 5; $star++)
+                                    <span style="font-size: 1.5rem; color: {{ $star <= $overallRating ? '#f4b400' : '#d1d5db' }};">&#9733;</span>
+                                @endfor
                             </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <strong>Timeliness:</strong><br>
+                                    {{ $ticket->feedback->timeliness_rating }}/5
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Completeness:</strong><br>
+                                    {{ $ticket->feedback->completeness_rating }}/5
+                                </div>
+                                <div class="col-12">
+                                    <strong>Overall Satisfaction:</strong><br>
+                                    {{ $ticket->feedback->overall_satisfaction_rating }}/5
+                                </div>
+                                <div class="col-12">
+                                    <strong>Comments:</strong><br>
+                                    {{ $ticket->feedback->comments ?: 'No additional comments were provided.' }}
+                                </div>
+                            </div>
+                        @else
+                            <p class="text-muted mb-0">No customer rating has been submitted for this closed ticket yet.</p>
                         @endif
-                        <div class="col-12">
-                            <strong>Work Done:</strong><br>
-                            {{ $ticket->work_done ?? 'Not recorded yet.' }}
+                    @else
+                        <h2 class="h5 mb-3">Resolution Highlights</h2>
+                        <p class="text-muted small mb-3">This ticket is already {{ $ticket->status->name }}. Key closure details are shown below.</p>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <strong>{{ $isClosedTicket ? 'Closed On' : 'Resolved On' }}:</strong><br>
+                                {{ optional($isClosedTicket ? $ticket->closed_at : $ticket->resolved_at)->format('d M Y H:i') ?? 'N/A' }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>{{ $isClosedTicket ? 'Closed By' : 'Resolved By' }}:</strong><br>
+                                {{ $completionLog?->changedBy?->name ?? $ticket->assignedStaff?->name ?? 'N/A' }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Handled By:</strong><br>
+                                {{ $ticket->assignedStaff?->name ?? 'N/A' }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Turnaround Time:</strong><br>
+                                {{ $turnaroundInterval ? \Carbon\CarbonInterval::instance($turnaroundInterval)->cascade()->forHumans(short: true) : 'N/A' }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Expected Resolution Date:</strong><br>
+                                {{ optional($ticket->expected_resolution_date)->format('d M Y') ?? 'N/A' }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Resolution Category:</strong><br>
+                                {{ $ticket->resolutionCategory?->name ?? 'N/A' }}
+                            </div>
+                            <div class="col-12">
+                                <strong>Root Cause Analysis:</strong><br>
+                                {{ $ticket->root_cause_analysis ?? 'Not recorded yet.' }}
+                            </div>
+                            <div class="col-12">
+                                <strong>Verification / Testing:</strong><br>
+                                {{ $ticket->verification_testing ?? 'Not recorded yet.' }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Data Loss Risk:</strong><br>
+                                {{ $ticket->data_loss_risk ? ucfirst($ticket->data_loss_risk) : 'Not recorded yet.' }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Services Disrupted:</strong><br>
+                                {{ $ticket->services_disrupted ?? 'Not recorded yet.' }}
+                            </div>
+                            <div class="col-12">
+                                <strong>Work Done:</strong><br>
+                                {{ $ticket->work_done ?? 'Not recorded yet.' }}
+                            </div>
+                            <div class="col-12">
+                                <strong>Recommendations:</strong><br>
+                                {{ $ticket->recommendations ?? 'Not recorded yet.' }}
+                            </div>
+                            <div class="col-12">
+                                <strong>Challenges Faced:</strong><br>
+                                {{ $ticket->challenges_faced ?? 'No challenges recorded.' }}
+                            </div>
                         </div>
-                        <div class="col-12">
-                            <strong>Recommendations:</strong><br>
-                            {{ $ticket->recommendations ?? 'Not recorded yet.' }}
-                        </div>
-                        <div class="col-12">
-                            <strong>Challenges Faced:</strong><br>
-                            {{ $ticket->challenges_faced ?? 'No challenges recorded.' }}
-                        </div>
-                    </div>
+                    @endif
                 @else
+                @php
+                    $isNewTicket = $ticket->status?->code === 'new';
+                @endphp
                 <h2 class="h5 mb-3">Update Ticket</h2>
                 <p class="text-muted small mb-3">
                     @if ($isWorkflowManager)
@@ -203,15 +260,20 @@
                 <form method="POST" action="{{ route('admin.tickets.update', $ticket) }}" class="row g-3">
                     @csrf
                     @method('PUT')
-                    <div class="col-12">
-                        <label class="form-label">Status</label>
-                        <select name="status_id" class="form-select" id="status_id" required>
-                            @foreach ($statuses as $status)
-                                <option value="{{ $status->id }}" data-status-code="{{ $status->code }}" @selected($ticket->status_id == $status->id)>{{ $status->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-12">
+                    @if ($isNewTicket)
+                        <input type="hidden" name="status_id" id="status_id" value="{{ $assignedStatusId }}" data-status-code="assigned">
+                    @else
+                        <div class="col-12">
+                            <label class="form-label">Status</label>
+                            <select name="status_id" class="form-select" id="status_id" required>
+                                <option value="">Select Ticket status...</option>
+                                @foreach ($statuses as $status)
+                                    <option value="{{ $status->id }}" data-status-code="{{ $status->code }}" @selected($ticket->status_id == $status->id)>{{ $status->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
+                    <div class="col-12 workflow-field workflow-field--assign" data-assign-mode="{{ $isWorkflowManager ? 'manager' : 'handler' }}">
                         <label class="form-label">{{ $isWorkflowManager ? 'Assign To' : 'Escalate / Reassign To' }}</label>
                         <select name="assigned_to" class="form-select">
                             <option value="">Unassigned</option>
@@ -224,7 +286,7 @@
                         <label class="form-label">Expected Resolution Date</label>
                         <input type="date" name="expected_resolution_date" class="form-control" value="{{ optional($ticket->expected_resolution_date)->toDateString() }}">
                     </div>
-                    <div class="col-md-6 workflow-field workflow-field--resolved">
+                    <div class="col-md-12 workflow-field workflow-field--resolved">
                         <label class="form-label">Resolution Category</label>
                         <select name="resolution_category_id" class="form-select">
                             <option value="">Select</option>
@@ -241,6 +303,30 @@
                                 <option value="{{ $reason->id }}" @selected($ticket->closure_reason_id == $reason->id)>{{ $reason->name }}</option>
                             @endforeach
                         </select>
+                    </div>
+                    <div class="col-12 workflow-field workflow-field--resolved workflow-field--closed">
+                        <label class="form-label">Root Cause Analysis <span class="text-danger">*</span></label>
+                        <textarea name="root_cause_analysis" rows="3" class="form-control">{{ old('root_cause_analysis', $ticket->root_cause_analysis) }}</textarea>
+                    </div>
+                    <div class="col-12 workflow-field workflow-field--resolved workflow-field--closed">
+                        <label class="form-label">Verification / Testing <span class="text-danger">*</span></label>
+                        <textarea name="verification_testing" rows="3" class="form-control" placeholder="Describe how the fix was confirmed to work (e.g. test result entry, sync confirmation, user sign-off).">{{ old('verification_testing', $ticket->verification_testing) }}</textarea>
+                    </div>
+                    <div class="col-12 workflow-field workflow-field--resolved workflow-field--closed">
+                        <label class="form-label">Impact Assessment</label>
+                    </div>
+                    <div class="col-md-12 workflow-field workflow-field--resolved workflow-field--closed">
+                        <label class="form-label">Data Loss Risk <span class="text-danger">*</span></label>
+                        <select name="data_loss_risk" class="form-select">
+                            <option value="">Select risk...</option>
+                            <option value="none" @selected(old('data_loss_risk', $ticket->data_loss_risk) === 'none')>None</option>
+                            <option value="partial" @selected(old('data_loss_risk', $ticket->data_loss_risk) === 'partial')>Partial</option>
+                            <option value="full" @selected(old('data_loss_risk', $ticket->data_loss_risk) === 'full')>Full</option>
+                        </select>
+                    </div>
+                    <div class="col-md-12 workflow-field workflow-field--resolved workflow-field--closed">
+                        <label class="form-label">Services Disrupted <span class="text-danger">*</span></label>
+                        <textarea name="services_disrupted" rows="3" class="form-control" placeholder="e.g. Sample reception, result entry, report printing, results synchronization">{{ old('services_disrupted', $ticket->services_disrupted) }}</textarea>
                     </div>
                     <div class="col-12 workflow-field workflow-field--resolved workflow-field--closed">
                         <label class="form-label">Work Done <span class="text-danger">*</span></label>
@@ -274,10 +360,23 @@
             }
 
             const toggleWorkflowFields = () => {
-                const selectedOption = statusSelect.options[statusSelect.selectedIndex];
-                const statusCode = selectedOption?.dataset.statusCode || '';
+                const statusCode = statusSelect.tagName === 'SELECT'
+                    ? statusSelect.options[statusSelect.selectedIndex]?.dataset.statusCode || ''
+                    : statusSelect.dataset.statusCode || '';
 
                 document.querySelectorAll('.workflow-field').forEach((field) => {
+                    if (field.classList.contains('workflow-field--assign')) {
+                        const assignMode = field.dataset.assignMode || '';
+
+                        if (assignMode === 'handler') {
+                            field.style.display = statusCode === 'escalated' ? '' : 'none';
+                        } else {
+                            field.style.display = statusCode === 'resolved' ? 'none' : '';
+                        }
+
+                        return;
+                    }
+
                     const showResolved = statusCode === 'resolved' && field.classList.contains('workflow-field--resolved');
                     const showClosed = statusCode === 'closed' && field.classList.contains('workflow-field--closed');
                     const shouldShow = showResolved || showClosed;

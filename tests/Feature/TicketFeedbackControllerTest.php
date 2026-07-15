@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
@@ -38,6 +39,7 @@ class TicketFeedbackControllerTest extends TestCase
     {
         Carbon::setTestNow('2026-07-02 12:00:00');
         Mail::fake();
+        Storage::fake('local');
 
         $support = User::query()->where('email', 'support@cphl.go.ug')->firstOrFail();
         $resolvedStatus = TicketStatus::query()->where('code', 'resolved')->firstOrFail();
@@ -67,6 +69,9 @@ class TicketFeedbackControllerTest extends TestCase
         $this->assertNotNull($ticket->feedback);
         $this->assertSame($closedStatus->id, $ticket->status_id);
         $this->assertNotNull($ticket->closed_at);
+        $this->assertNotNull($ticket->feedback->incident_report_path);
+        $this->assertNotNull($ticket->feedback->incident_report_generated_at);
+        Storage::disk('local')->assertExists($ticket->feedback->incident_report_path);
 
         Mail::assertSent(TicketFeedbackReceivedMail::class, fn (TicketFeedbackReceivedMail $mail) => $mail->hasTo($support->email));
     }
@@ -81,6 +86,39 @@ class TicketFeedbackControllerTest extends TestCase
         $response = $this->get(route('tickets.feedback.show', ['ticket' => $ticket]));
 
         $response->assertForbidden();
+    }
+
+    public function test_a_generated_incident_report_can_be_downloaded_from_a_signed_tracking_link(): void
+    {
+        Storage::fake('local');
+
+        $ticket = $this->createTicket([
+            'status_id' => TicketStatus::query()->where('code', 'closed')->value('id'),
+            'resolved_at' => now()->subHour(),
+            'closed_at' => now(),
+        ]);
+
+        $ticket->feedback()->create([
+            'timeliness_rating' => 4,
+            'completeness_rating' => 4,
+            'overall_satisfaction_rating' => 5,
+            'comments' => 'Great support.',
+            'incident_report_path' => 'reports/incident-resolution/'.$ticket->ticket_number.'.pdf',
+            'incident_report_generated_at' => now(),
+            'submitted_at' => now(),
+        ]);
+
+        Storage::disk('local')->put($ticket->feedback->incident_report_path, '%PDF-1.4 sample');
+
+        $response = $this->get(URL::temporarySignedRoute(
+            'tickets.report.download',
+            now()->addHour(),
+            ['ticket' => $ticket]
+        ));
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $response->assertSee('%PDF-1.4 sample', false);
     }
 
     /**

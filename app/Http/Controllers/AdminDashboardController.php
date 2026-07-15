@@ -28,9 +28,17 @@ class AdminDashboardController extends Controller
             'staff_id' => $request->integer('performance_staff_id') ?: null,
         ];
         $query = Ticket::query()->with(['status', 'assignedStaff', 'system']);
+        $query->whereNotIn('submission_review_status', ['QUARANTINED', 'REJECTED_SPAM']);
 
         if (! $user->hasAnyRole(['ict_admin', 'ict_manager', 'ict_supervisor'])) {
             $query->where('assigned_to', $user->id);
+        }
+
+        $metricsQuery = Ticket::query()
+            ->whereNotIn('submission_review_status', ['QUARANTINED', 'REJECTED_SPAM']);
+
+        if (! $user->hasAnyRole(['ict_admin', 'ict_manager', 'ict_supervisor'])) {
+            $metricsQuery->where('assigned_to', $user->id);
         }
 
         $requestedTab = $request->string('tab')->toString();
@@ -51,10 +59,10 @@ class AdminDashboardController extends Controller
                 ->orderBy('name')
                 ->get(),
             'metrics' => [
-                'assigned' => Ticket::query()->whereNotNull('assigned_to')->count(),
-                'in_progress' => Ticket::query()->whereHas('status', fn ($status) => $status->where('code', 'in_progress'))->count(),
-                'resolved' => Ticket::query()->whereHas('status', fn ($status) => $status->where('code', 'resolved'))->count(),
-                'sla_compliance' => Ticket::query()
+                'assigned' => (clone $metricsQuery)->whereNotNull('assigned_to')->count(),
+                'in_progress' => (clone $metricsQuery)->whereHas('status', fn ($status) => $status->where('code', 'in_progress'))->count(),
+                'resolved' => (clone $metricsQuery)->whereHas('status', fn ($status) => $status->where('code', 'resolved'))->count(),
+                'sla_compliance' => (clone $metricsQuery)
                     ->whereNotNull('resolved_at')
                     ->whereRaw('date(resolved_at) <= expected_resolution_date')
                     ->count(),

@@ -27,6 +27,14 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
+        if ($request->user()?->requiresPasswordChange()) {
+            return redirect()
+                ->route('password.change.edit')
+                ->with('warning', $request->user()->passwordExpired()
+                    ? 'Your password has expired. Please create a new one to continue.'
+                    : 'Please change the temporary password that was sent to your email before continuing.');
+        }
+
         return redirect()->intended(route('dashboard'));
     }
 

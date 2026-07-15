@@ -75,6 +75,7 @@ class ManagerDashboardService
     private function filteredQuery(array $filters)
     {
         return Ticket::query()
+            ->whereNotIn('submission_review_status', ['QUARANTINED', 'REJECTED_SPAM'])
             ->when($filters['start_date'] !== '' && $filters['end_date'] !== '', function ($query) use ($filters) {
                 $start = Carbon::parse($filters['start_date'])->startOfDay();
                 $end = Carbon::parse($filters['end_date'])->endOfDay();

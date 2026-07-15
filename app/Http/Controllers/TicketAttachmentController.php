@@ -2,19 +2,26 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Ticket;
-use Illuminate\Support\Facades\Storage;
+use App\Models\TicketAttachment;
+use App\Support\AttachmentSecurityService;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TicketAttachmentController extends Controller
 {
-    public function show(Ticket $ticket): StreamedResponse
+    public function __construct(
+        private readonly AttachmentSecurityService $attachmentSecurityService,
+    ) {
+    }
+
+    public function show(TicketAttachment $attachment): StreamedResponse
     {
-        abort_unless($ticket->hasAttachment(), 404);
+        return $this->attachmentSecurityService->streamDownload($attachment);
+    }
 
-        $disk = Storage::disk('public');
-        abort_unless($disk->exists($ticket->attachment_path), 404);
+    public function preview(TicketAttachment $attachment): StreamedResponse
+    {
+        abort_unless($attachment->isPreviewableImage(), 404);
 
-        return $disk->response($ticket->attachment_path, $ticket->attachmentFilename());
+        return $this->attachmentSecurityService->streamInline($attachment);
     }
 }

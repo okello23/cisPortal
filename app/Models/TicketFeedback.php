@@ -13,10 +13,13 @@ class TicketFeedback extends Model
         'completeness_rating',
         'overall_satisfaction_rating',
         'comments',
+        'incident_report_path',
+        'incident_report_generated_at',
         'submitted_at',
     ];
 
     protected $casts = [
+        'incident_report_generated_at' => 'datetime',
         'submitted_at' => 'datetime',
     ];
 

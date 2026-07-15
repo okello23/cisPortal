@@ -10,6 +10,6 @@
 <p><strong>Issue Type:</strong> {{ $ticket->issueType->name }}</p>
 <p><strong>Priority:</strong> {{ $ticket->priorityLevel->name }}</p>
 <p><strong>Description:</strong> {{ $ticket->description }}</p>
-@if ($ticket->attachment_path)
-    <p><strong>Attachment:</strong> {{ $ticket->attachment_path }}</p>
+@if ($ticket->attachments->isNotEmpty())
+    <p><strong>Attachments:</strong> {{ $ticket->attachments->count() }} uploaded. Review them securely in the CIS Portal.</p>
 @endif

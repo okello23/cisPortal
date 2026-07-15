@@ -8,6 +8,7 @@ use App\Models\TicketFeedback;
 use App\Models\TicketStatusLog;
 use App\Models\TicketStatus;
 use App\Support\AuditService;
+use App\Support\IncidentResolutionReportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -15,9 +16,10 @@ use Illuminate\View\View;
 
 class TicketFeedbackController extends Controller
 {
-    public function __construct(private readonly AuditService $auditService)
-    {
-    }
+    public function __construct(
+        private readonly AuditService $auditService,
+        private readonly IncidentResolutionReportService $incidentResolutionReportService,
+    ) {}
 
     public function create(Request $request, Ticket $ticket): View
     {
@@ -67,6 +69,19 @@ class TicketFeedbackController extends Controller
         } else {
             $ticket->forceFill(['feedback_reminder_sent_at' => null])->save();
         }
+
+        $ticket->loadMissing([
+            'designation',
+            'facility',
+            'priorityLevel',
+            'statusLogs.changedBy',
+            'statusLogs.newStatus',
+        ]);
+
+        $feedback->forceFill([
+            'incident_report_path' => $this->incidentResolutionReportService->generateForFeedback($ticket, $feedback),
+            'incident_report_generated_at' => now(),
+        ])->save();
 
         $this->auditService->log('ticket.feedback_submitted', $feedback, null, $feedback->toArray(), null, $request);
 

@@ -176,6 +176,12 @@
             <div class="collapse navbar-collapse" id="mainNav">
                 <div class="ms-auto d-flex gap-2 align-items-center">
                     @auth
+                        @if (
+                            auth()->user()->hasAnyRole([\App\Models\User::ROLE_ICT_ADMIN, \App\Models\User::ROLE_ICT_MANAGER])
+                            && \Illuminate\Support\Facades\Route::has('admin.anti-spam.dashboard')
+                        )
+                            <a class="btn btn-outline-dark rounded-pill px-4" href="{{ route('admin.anti-spam.dashboard', [], false) }}">Anti-Spam</a>
+                        @endif
                         <div class="dropdown">
                             <button class="btn btn-outline-dark rounded-pill px-4 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 Infrastructure
@@ -202,6 +208,10 @@
     <main class="container py-4 py-lg-5">
         @if (session('status'))
             <div class="alert alert-success rounded-4">{{ session('status') }}</div>
+        @endif
+
+        @if (session('warning'))
+            <div class="alert alert-warning rounded-4">{{ session('warning') }}</div>
         @endif
 
         @if ($errors->any())

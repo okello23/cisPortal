@@ -16,6 +16,9 @@
                         <label class="form-label">Password</label>
                         <input type="password" name="password" class="form-control" required>
                     </div>
+                    <div class="col-12 text-end">
+                        <a href="{{ route('password.request', [], false) }}" class="small text-decoration-none">Forgot password?</a>
+                    </div>
                     <div class="col-12 form-check">
                         <input type="checkbox" class="form-check-input" id="remember" name="remember">
                         <label class="form-check-label" for="remember">Remember me</label>

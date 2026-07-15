@@ -19,6 +19,7 @@ use App\Support\FacilitySyncService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -27,6 +28,21 @@ use Illuminate\View\View;
 
 class ManagerListController extends Controller
 {
+    public const LIST_DEFINITIONS = [
+        'alis-key-update-reasons' => 'A-LIS Key Update Reasons',
+        'systems' => 'Systems',
+        'modules' => 'Modules',
+        'regions' => 'Regions',
+        'facilities' => 'Facilities',
+        'departments' => 'Departments',
+        'designations' => 'Designations',
+        'issue-types' => 'Issue Types',
+        'priority-levels' => 'Priority/Impact Levels',
+        'ticket-statuses' => 'Ticket Statuses',
+        'resolution-categories' => 'Resolution Categories',
+        'closure-reasons' => 'Closure Reasons',
+    ];
+
     public function __construct(
         private readonly AuditService $auditService,
         private readonly FacilitySyncService $facilitySyncService,
@@ -37,6 +53,7 @@ class ManagerListController extends Controller
     public function index(string $list): View
     {
         $this->authorizeUser();
+        $this->authorizeListAccess($list);
 
         if ($list === 'facilities' && request()->query('action') === 'reset_data') {
             DB::transaction(function () {
@@ -113,6 +130,7 @@ class ManagerListController extends Controller
     public function store(Request $request, string $list): RedirectResponse
     {
         $this->authorizeUser();
+        $this->authorizeListAccess($list);
 
         if ($list === 'facilities' && $request->input('_intent') === 'sync_irrds') {
             return $this->syncFacilities($request);
@@ -135,6 +153,7 @@ class ManagerListController extends Controller
     public function update(Request $request, string $list, string $id): RedirectResponse
     {
         $this->authorizeUser();
+        $this->authorizeListAccess($list);
 
         if ($list === 'facilities' && $id === 'sync') {
             return $this->syncFacilities($request);
@@ -254,8 +273,39 @@ class ManagerListController extends Controller
         };
     }
 
+    public static function availableListsForUser(?User $user): array
+    {
+        if ($user === null) {
+            return [];
+        }
+
+        if ($user->role === User::ROLE_ICT_ADMIN) {
+            return self::LIST_DEFINITIONS;
+        }
+
+        if ($user->role === User::ROLE_ICT_SUPERVISOR) {
+            return array_intersect_key(self::LIST_DEFINITIONS, array_flip([
+                'alis-key-update-reasons',
+                'systems',
+                'modules',
+                'issue-types',
+                'priority-levels',
+                'ticket-statuses',
+                'resolution-categories',
+                'closure-reasons',
+            ]));
+        }
+
+        return [];
+    }
+
     private function authorizeUser(): void
     {
         abort_unless(Auth::user()->hasAnyRole(['ict_admin', 'ict_supervisor']), 403);
+    }
+
+    private function authorizeListAccess(string $list): void
+    {
+        abort_unless(array_key_exists($list, self::availableListsForUser(Auth::user())), 403);
     }
 }

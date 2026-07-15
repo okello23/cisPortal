@@ -34,6 +34,7 @@ class SupportPerformanceService
         $tickets = Ticket::query()
             ->with(['status', 'priorityLevel', 'feedback'])
             ->whereIn('assigned_to', $staff->pluck('id'))
+            ->whereNotIn('submission_review_status', ['QUARANTINED', 'REJECTED_SPAM'])
             ->get();
 
         $ticketIds = $tickets->pluck('id')->all();

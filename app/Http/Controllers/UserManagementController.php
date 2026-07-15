@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\View\View;
 
 class UserManagementController extends Controller
@@ -51,6 +52,8 @@ class UserManagementController extends Controller
             'role' => $validated['role'],
             'active' => $request->boolean('active', true),
             'password' => Hash::make($generatedPassword),
+            'force_password_change' => true,
+            'password_changed_at' => null,
         ]);
 
         $this->auditService->log('user.created', $user, null, $user->toArray(), Auth::id(), $request);
@@ -69,7 +72,14 @@ class UserManagementController extends Controller
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'phone' => ['nullable', 'string', 'max:50'],
             'role' => ['required', Rule::in(array_keys($this->roles()))],
-            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'password' => [
+                'nullable',
+                'confirmed',
+                PasswordRule::min(8)
+                    ->mixedCase()
+                    ->numbers()
+                    ->symbols(),
+            ],
             'active' => ['nullable', 'boolean'],
         ]);
 
@@ -85,6 +95,8 @@ class UserManagementController extends Controller
 
         if (! empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);
+            $user->force_password_change = true;
+            $user->password_changed_at = null;
         }
 
         $user->save();

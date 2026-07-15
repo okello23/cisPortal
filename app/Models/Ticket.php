@@ -34,6 +34,25 @@ class Ticket extends Model
         'browser_info',
         'device_info',
         'ip_address',
+        'submission_uuid',
+        'content_fingerprint',
+        'submission_risk_score',
+        'submission_risk_level',
+        'submission_risk_reasons',
+        'is_suspected_spam',
+        'is_possible_duplicate',
+        'quarantined_at',
+        'quarantined_by',
+        'quarantine_reason',
+        'reviewed_at',
+        'reviewed_by',
+        'duplicate_of_ticket_id',
+        'duplicate_confidence',
+        'duplicate_review_status',
+        'turnstile_verified',
+        'turnstile_error_code',
+        'submission_review_status',
+        'released_to_queue_at',
         'status_id',
         'assigned_to',
         'assigned_at',
@@ -44,6 +63,10 @@ class Ticket extends Model
         'closure_reason_id',
         'expected_resolution_date',
         'resolution_summary',
+        'root_cause_analysis',
+        'verification_testing',
+        'data_loss_risk',
+        'services_disrupted',
         'work_done',
         'recommendations',
         'challenges_faced',
@@ -54,8 +77,15 @@ class Ticket extends Model
 
     protected $casts = [
         'training_recommended' => 'boolean',
+        'submission_risk_reasons' => 'array',
+        'is_suspected_spam' => 'boolean',
+        'is_possible_duplicate' => 'boolean',
+        'turnstile_verified' => 'boolean',
         'issue_started_at' => 'date',
         'expected_resolution_date' => 'date',
+        'quarantined_at' => 'datetime',
+        'reviewed_at' => 'datetime',
+        'released_to_queue_at' => 'datetime',
         'assigned_at' => 'datetime',
         'last_worked_at' => 'datetime',
         'last_reminder_sent_at' => 'datetime',
@@ -139,6 +169,21 @@ class Ticket extends Model
         return $this->hasOne(TicketFeedback::class);
     }
 
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(TicketAttachment::class);
+    }
+
+    public function duplicateMatches(): HasMany
+    {
+        return $this->hasMany(SubmissionDuplicateMatch::class);
+    }
+
+    public function duplicateParent(): BelongsTo
+    {
+        return $this->belongsTo(Ticket::class, 'duplicate_of_ticket_id');
+    }
+
     public function canReceiveFeedback(): bool
     {
         if ($this->email === null || $this->resolved_at === null || $this->status?->code !== 'resolved') {
@@ -159,34 +204,28 @@ class Ticket extends Model
 
     public function hasAttachment(): bool
     {
-        return filled($this->attachment_path);
+        if ($this->relationLoaded('attachments')) {
+            return $this->attachments->isNotEmpty() || filled($this->attachment_path);
+        }
+
+        return $this->attachments()->exists() || filled($this->attachment_path);
     }
 
     public function attachmentUrl(): ?string
     {
-        if (! $this->hasAttachment()) {
-            return null;
-        }
-
-        return URL::signedRoute('tickets.attachments.show', ['ticket' => $this]);
+        return $this->primaryAttachment()?->downloadUrl();
     }
 
     public function attachmentFilename(): ?string
     {
-        if (! $this->hasAttachment()) {
-            return null;
-        }
-
-        return basename($this->attachment_path);
+        return $this->primaryAttachment()?->original_filename
+            ?? ($this->hasAttachment() ? basename((string) $this->attachment_path) : null);
     }
 
     public function attachmentExtension(): ?string
     {
-        if (! $this->hasAttachment()) {
-            return null;
-        }
-
-        return strtolower(pathinfo($this->attachment_path, PATHINFO_EXTENSION));
+        return $this->primaryAttachment()?->extension
+            ?? ($this->hasAttachment() ? strtolower(pathinfo((string) $this->attachment_path, PATHINFO_EXTENSION)) : null);
     }
 
     public function hasImageAttachment(): bool
@@ -197,5 +236,14 @@ class Ticket extends Model
     public function hasPdfAttachment(): bool
     {
         return $this->attachmentExtension() === 'pdf';
+    }
+
+    public function primaryAttachment(): ?TicketAttachment
+    {
+        if ($this->relationLoaded('attachments')) {
+            return $this->attachments->first();
+        }
+
+        return $this->attachments()->oldest()->first();
     }
 }
