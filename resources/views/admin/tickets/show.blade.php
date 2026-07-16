@@ -7,6 +7,9 @@
         $isClosedTicket = $ticket->closed_at !== null || $statusCode === 'closed' || $statusName === 'closed';
         $isResolvedTicket = $ticket->resolved_at !== null || $statusCode === 'resolved' || $statusName === 'resolved';
         $isCompletedTicket = $isClosedTicket || $isResolvedTicket;
+        $isAssignedTicket = $statusCode === 'assigned' || $statusName === 'assigned';
+        $hasUpdateErrors = $errors->isNotEmpty();
+        $hideUpdateCardByDefault = ! $isCompletedTicket && $isAssignedTicket && ! $hasUpdateErrors;
         $completionLog = $ticket->statusLogs
             ->filter(fn ($log) => in_array($log->newStatus?->code, ['resolved', 'closed'], true))
             ->sortByDesc('created_at')
@@ -15,7 +18,7 @@
     @endphp
 
     <div class="row g-4">
-        <div class="col-lg-7">
+        <div class="{{ $hideUpdateCardByDefault ? 'col-lg-9' : 'col-lg-7' }}" id="ticket-details-column">
             <div class="content-card bg-white p-4 mb-4">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
                     <div>
@@ -23,7 +26,7 @@
                         <h1 class="h3 mb-0">{{ $ticket->ticket_number }}</h1>
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-wrap">
-                        @if ($ticket->feedback?->incident_report_path)
+                        @if ($isCompletedTicket)
                             <a href="{{ route('admin.tickets.incident-resolution-report', $ticket) }}" class="btn btn-sm btn-outline-dark rounded-pill">
                                 Download Resolution Report
                             </a>
@@ -135,23 +138,26 @@
             </div>
         </div>
 
-        <div class="col-lg-5">
-            <div class="content-card bg-white p-4 mb-4">
-                <h2 class="h5">Comments</h2>
-                @forelse ($ticket->comments as $comment)
-                    <div class="border rounded-4 p-3 mb-3">
-                        <div class="d-flex justify-content-between small text-muted mb-2">
-                            <span>{{ $comment->author?->name ?? 'System' }}</span>
-                            <span>{{ ucfirst($comment->comment_type) }} note</span>
-                        </div>
-                        <div>{{ $comment->comment }}</div>
-                    </div>
-                @empty
-                    <p class="text-muted mb-0">No comments added yet.</p>
-                @endforelse
-            </div>
+        <div class="{{ $hideUpdateCardByDefault ? 'col-lg-3' : 'col-lg-5' }}" id="ticket-side-column">
+            @if (! $isCompletedTicket && $isAssignedTicket)
+                <div class="content-card bg-white p-4 mb-4">
+                    <button
+                        type="button"
+                        class="btn btn-dark rounded-pill px-4"
+                        id="show-update-ticket-card"
+                        aria-controls="update-ticket-card"
+                        aria-expanded="{{ $hasUpdateErrors ? 'true' : 'false' }}"
+                    >
+                        Update Assignment
+                    </button>
+                </div>
+            @endif
 
-            <div class="content-card bg-white p-4">
+            <div
+                class="content-card bg-white p-4"
+                id="update-ticket-card"
+                @if ($hideUpdateCardByDefault) style="display: none;" @endif
+            >
                 @if ($isCompletedTicket)
                     @if ($isClosedTicket)
                         @php
@@ -247,7 +253,7 @@
                     @endif
                 @else
                 @php
-                    $isNewTicket = $ticket->status?->code === 'new';
+                    $isNewTicket = $statusCode === 'new' || $statusName === 'new';
                 @endphp
                 <h2 class="h5 mb-3">Update Ticket</h2>
                 <p class="text-muted small mb-3">
@@ -354,6 +360,30 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const statusSelect = document.getElementById('status_id');
+            const updateCard = document.getElementById('update-ticket-card');
+            const revealButton = document.getElementById('show-update-ticket-card');
+            const detailsColumn = document.getElementById('ticket-details-column');
+            const sideColumn = document.getElementById('ticket-side-column');
+
+            const applyExpandedLayout = (expanded) => {
+                if (!detailsColumn || !sideColumn) {
+                    return;
+                }
+
+                detailsColumn.classList.toggle('col-lg-7', !expanded);
+                detailsColumn.classList.toggle('col-lg-9', expanded);
+                sideColumn.classList.toggle('col-lg-5', !expanded);
+                sideColumn.classList.toggle('col-lg-3', expanded);
+            };
+
+            if (revealButton && updateCard) {
+                revealButton.addEventListener('click', () => {
+                    updateCard.style.display = '';
+                    revealButton.setAttribute('aria-expanded', 'true');
+                    revealButton.closest('.content-card')?.style.setProperty('display', 'none');
+                    applyExpandedLayout(false);
+                });
+            }
 
             if (!statusSelect) {
                 return;

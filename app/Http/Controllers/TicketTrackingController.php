@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Ticket;
+use App\Support\IncidentResolutionReportService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
@@ -11,6 +12,11 @@ use Illuminate\View\View;
 
 class TicketTrackingController extends Controller
 {
+    public function __construct(
+        private readonly IncidentResolutionReportService $incidentResolutionReportService,
+    ) {
+    }
+
     public function create(): View
     {
         return view('tickets.track');
@@ -34,7 +40,7 @@ class TicketTrackingController extends Controller
 
         return view('tickets.track', [
             'ticket' => $ticket,
-            'reportUrl' => $ticket?->feedback?->incident_report_path
+            'reportUrl' => $ticket && ($ticket->resolved_at !== null || $ticket->closed_at !== null)
                 ? URL::temporarySignedRoute(
                     'tickets.report.download',
                     now()->addHours(4),
@@ -50,11 +56,21 @@ class TicketTrackingController extends Controller
 
         $ticket->load('feedback');
 
-        abort_if(blank($ticket->feedback?->incident_report_path), 404);
-        abort_unless(Storage::disk('local')->exists($ticket->feedback->incident_report_path), 404);
+        abort_if($ticket->resolved_at === null && $ticket->closed_at === null, 404);
+
+        if ($ticket->feedback) {
+            $path = $this->incidentResolutionReportService->generateForFeedback($ticket, $ticket->feedback);
+
+            $ticket->feedback->forceFill([
+                'incident_report_path' => $path,
+                'incident_report_generated_at' => now(),
+            ])->save();
+        } else {
+            $path = $this->incidentResolutionReportService->generateForTicket($ticket);
+        }
 
         return response(
-            Storage::disk('local')->get($ticket->feedback->incident_report_path),
+            Storage::disk('local')->get($path),
             200,
             [
                 'Content-Type' => 'application/pdf',

@@ -118,6 +118,10 @@ class PublicTicketSubmissionSecurityTest extends TestCase
 
     public function test_missing_turnstile_token_is_rejected(): void
     {
+        config()->set('cis_submission.turnstile.enabled', true);
+        config()->set('cis_submission.turnstile.site_key', 'test-site-key');
+        config()->set('cis_submission.turnstile.secret_key', 'test-secret-key');
+
         $response = $this->from(route('tickets.create'))
             ->withSession([
                 'public_ticket_submission_uuid' => '30d6e8b4-3d3f-447e-bd6f-8b2534fed95f',
@@ -129,6 +133,25 @@ class PublicTicketSubmissionSecurityTest extends TestCase
         $response->assertRedirect(route('tickets.create'));
         $response->assertSessionHasErrors('cf-turnstile-response');
         $this->assertDatabaseCount('tickets', 0);
+    }
+
+    public function test_turnstile_is_not_required_when_keys_are_not_configured(): void
+    {
+        config()->set('cis_submission.turnstile.enabled', true);
+        config()->set('cis_submission.turnstile.site_key', null);
+        config()->set('cis_submission.turnstile.secret_key', null);
+
+        Mail::fake();
+
+        $response = $this->withSession([
+            'public_ticket_submission_uuid' => 'f6c7e9ce-69a3-4719-8122-8f677ff7572d',
+        ])->post(route('tickets.store'), $this->validPayload([
+            'submission_uuid' => 'f6c7e9ce-69a3-4719-8122-8f677ff7572d',
+            'cf-turnstile-response' => '',
+        ]));
+
+        $response->assertRedirect(route('tickets.track'));
+        $this->assertDatabaseCount('tickets', 1);
     }
 
     public function test_honeypot_submission_is_quarantined_and_suppresses_email(): void

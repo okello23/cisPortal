@@ -118,7 +118,30 @@ class TicketFeedbackControllerTest extends TestCase
 
         $response->assertOk();
         $response->assertHeader('Content-Type', 'application/pdf');
-        $response->assertSee('%PDF-1.4 sample', false);
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    public function test_a_completed_ticket_without_feedback_still_gets_a_downloadable_incident_report(): void
+    {
+        Storage::fake('local');
+
+        $ticket = $this->createTicket([
+            'status_id' => TicketStatus::query()->where('code', 'closed')->value('id'),
+            'resolved_at' => now()->subHour(),
+            'closed_at' => now(),
+            'work_done' => 'Applied the correct facility mapping and regenerated outputs.',
+        ]);
+
+        $response = $this->get(URL::temporarySignedRoute(
+            'tickets.report.download',
+            now()->addHour(),
+            ['ticket' => $ticket]
+        ));
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+        Storage::disk('local')->assertExists('reports/incident-resolution/'.$ticket->ticket_number.'.pdf');
     }
 
     /**

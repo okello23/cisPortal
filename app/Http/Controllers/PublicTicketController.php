@@ -53,12 +53,13 @@ class PublicTicketController extends Controller
         $submissionUuid = (string) Str::uuid();
         $request->session()->put('public_ticket_submission_uuid', $submissionUuid);
         $request->session()->put('public_ticket_rendered_at', now()->timestamp);
+        $turnstileEnabled = $this->turnstileConfigured();
 
         return view('tickets.create', [
             'submissionUuid' => $submissionUuid,
             'formRenderedAt' => now()->timestamp,
             'turnstileSiteKey' => config('cis_submission.turnstile.site_key'),
-            'turnstileEnabled' => config('cis_submission.turnstile.enabled'),
+            'turnstileEnabled' => $turnstileEnabled,
             'selectedSystem' => null,
             'designations' => Designation::query()->where('active', true)->orderBy('sort_order')->orderBy('name')->get(),
             'systems' => SupportSystem::query()->where('active', true)->orderBy('sort_order')->get(),
@@ -71,6 +72,7 @@ class PublicTicketController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $turnstileEnabled = $this->turnstileConfigured();
         $submissionUuid = (string) $request->string('submission_uuid');
         $sessionUuid = (string) $request->session()->get('public_ticket_submission_uuid');
 
@@ -122,7 +124,7 @@ class PublicTicketController extends Controller
             'priority_level_id' => ['required', Rule::exists('priority_levels', 'id')->where('active', true)],
             'description' => ['required', 'string', 'min:10', 'max:10000'],
             'attachments.*' => ['nullable', 'file'],
-            'cf-turnstile-response' => [config('cis_submission.turnstile.enabled') ? 'required' : 'nullable'],
+            'cf-turnstile-response' => [$turnstileEnabled ? 'required' : 'nullable'],
         ]);
 
         $facility = Facility::query()->whereKey($validated['facility_id'])->firstOrFail();
@@ -268,6 +270,13 @@ class PublicTicketController extends Controller
         $request->session()->forget(['public_ticket_submission_uuid', 'public_ticket_rendered_at']);
 
         return $this->duplicateSubmissionResponse($result);
+    }
+
+    private function turnstileConfigured(): bool
+    {
+        return (bool) config('cis_submission.turnstile.enabled')
+            && filled(config('cis_submission.turnstile.site_key'))
+            && filled(config('cis_submission.turnstile.secret_key'));
     }
 
     private function sanitizeValidatedData(array $validated): array

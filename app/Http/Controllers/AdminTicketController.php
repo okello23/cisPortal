@@ -16,6 +16,7 @@ use App\Models\TicketStatus;
 use App\Models\TicketStatusLog;
 use App\Models\User;
 use App\Support\AuditService;
+use App\Support\IncidentResolutionReportService;
 use App\Support\TicketRecipientResolver;
 use Illuminate\Support\Collection;
 use Illuminate\Support\CarbonInterval;
@@ -34,6 +35,7 @@ class AdminTicketController extends Controller
     public function __construct(
         private readonly AuditService $auditService,
         private readonly TicketRecipientResolver $ticketRecipientResolver,
+        private readonly IncidentResolutionReportService $incidentResolutionReportService,
     )
     {
     }
@@ -132,11 +134,21 @@ class AdminTicketController extends Controller
 
         $ticket->load('feedback');
 
-        abort_if(blank($ticket->feedback?->incident_report_path), 404);
-        abort_unless(Storage::disk('local')->exists($ticket->feedback->incident_report_path), 404);
+        abort_if($ticket->resolved_at === null && $ticket->closed_at === null, 404);
+
+        if ($ticket->feedback) {
+            $path = $this->incidentResolutionReportService->generateForFeedback($ticket, $ticket->feedback);
+
+            $ticket->feedback->forceFill([
+                'incident_report_path' => $path,
+                'incident_report_generated_at' => now(),
+            ])->save();
+        } else {
+            $path = $this->incidentResolutionReportService->generateForTicket($ticket);
+        }
 
         return response(
-            Storage::disk('local')->get($ticket->feedback->incident_report_path),
+            Storage::disk('local')->get($path),
             200,
             [
                 'Content-Type' => 'application/pdf',

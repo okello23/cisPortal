@@ -8,7 +8,7 @@ class TurnstileVerificationService
 {
     public function verify(?string $token, ?string $ipAddress = null): array
     {
-        if (! config('cis_submission.turnstile.enabled')) {
+        if (! $this->isConfigured()) {
             return ['success' => true, 'error_code' => null];
         }
 
@@ -34,5 +34,12 @@ class TurnstileVerificationService
             'success' => (bool) ($payload['success'] ?? false),
             'error_code' => $payload['error-codes'][0] ?? null,
         ];
+    }
+
+    private function isConfigured(): bool
+    {
+        return (bool) config('cis_submission.turnstile.enabled')
+            && filled(config('cis_submission.turnstile.site_key'))
+            && filled(config('cis_submission.turnstile.secret_key'));
     }
 }
