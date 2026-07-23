@@ -26,8 +26,8 @@ Route::post('/track', [TicketTrackingController::class, 'search'])->name('ticket
 Route::get('/track/{ticket}/incident-resolution-report', [TicketTrackingController::class, 'downloadIncidentResolutionReport'])->middleware('signed')->name('tickets.report.download');
 Route::get('/attachments/{attachment}', [TicketAttachmentController::class, 'show'])->middleware('signed:relative')->name('tickets.attachments.show');
 Route::get('/attachments/{attachment}/preview', [TicketAttachmentController::class, 'preview'])->middleware('signed:relative')->name('tickets.attachments.preview');
-Route::get('/track/{ticket}/feedback', [TicketFeedbackController::class, 'create'])->middleware('signed')->name('tickets.feedback.show');
-Route::post('/track/{ticket}/feedback', [TicketFeedbackController::class, 'store'])->middleware('signed')->name('tickets.feedback.store');
+Route::get('/track/{ticket}/feedback', [TicketFeedbackController::class, 'create'])->middleware('signed:relative')->name('tickets.feedback.show');
+Route::post('/track/{ticket}/feedback', [TicketFeedbackController::class, 'store'])->middleware('signed:relative')->name('tickets.feedback.store');
 
 Route::get('/dashboard/public', [PublicDashboardController::class, 'index'])->name('dashboard.public');
 

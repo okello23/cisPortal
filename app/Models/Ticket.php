@@ -199,7 +199,7 @@ class Ticket extends Model
 
     public function feedbackUrl(string $route = 'tickets.feedback.show'): string
     {
-        return URL::signedRoute($route, ['ticket' => $this]);
+        return URL::signedRoute($route, ['ticket' => $this], absolute: false);
     }
 
     public function hasAttachment(): bool

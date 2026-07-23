@@ -54,7 +54,7 @@ class TicketFeedbackControllerTest extends TestCase
             'resolution_summary' => 'Updated the configuration and verified access.',
         ]);
 
-        $url = URL::signedRoute('tickets.feedback.store', ['ticket' => $ticket]);
+        $url = $ticket->feedbackUrl('tickets.feedback.store');
 
         $response = $this->post($url, [
             'timeliness_rating' => 4,

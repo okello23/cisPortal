@@ -24,7 +24,7 @@ class TicketFeedbackController extends Controller
 
     public function create(Request $request, Ticket $ticket): View
     {
-        abort_unless($request->hasValidSignature(), 403);
+        abort_unless($request->hasValidRelativeSignature(), 403);
 
         return view('tickets.feedback', [
             'ticket' => $ticket->load(['status', 'assignedStaff', 'feedback', 'system']),
@@ -33,7 +33,7 @@ class TicketFeedbackController extends Controller
 
     public function store(Request $request, Ticket $ticket): RedirectResponse
     {
-        abort_unless($request->hasValidSignature(), 403);
+        abort_unless($request->hasValidRelativeSignature(), 403);
 
         $ticket->load(['status', 'assignedStaff', 'feedback', 'system']);
 

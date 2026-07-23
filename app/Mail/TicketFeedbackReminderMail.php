@@ -8,7 +8,6 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\URL;
 
 class TicketFeedbackReminderMail extends Mailable
 {
@@ -26,7 +25,7 @@ class TicketFeedbackReminderMail extends Mailable
     public function content(): Content
     {
         return new Content(view: 'mail.ticket-feedback-reminder', with: [
-            'feedbackUrl' => URL::signedRoute('tickets.feedback.show', ['ticket' => $this->ticket]),
+            'feedbackUrl' => $this->ticket->feedbackUrl(),
         ]);
     }
 }
