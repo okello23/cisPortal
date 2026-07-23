@@ -86,7 +86,13 @@ class TicketReminderServiceTest extends TestCase
         $this->assertSame(0, $counts['unresolved']);
         $this->assertSame(1, $counts['feedback']);
 
-        Mail::assertSent(TicketFeedbackReminderMail::class, fn (TicketFeedbackReminderMail $mail) => $mail->hasTo('requestor@example.com'));
+        Mail::assertSent(TicketFeedbackReminderMail::class, function (TicketFeedbackReminderMail $mail) {
+            $feedbackUrl = $mail->content()->with['feedbackUrl'];
+
+            return $mail->hasTo('requestor@example.com')
+                && str_starts_with($feedbackUrl, rtrim((string) config('app.url'), '/').'/track/')
+                && str_contains($feedbackUrl, '/feedback?signature=');
+        });
         Mail::assertNotSent(TicketReminderMail::class);
 
         $ticket->refresh();

@@ -202,6 +202,11 @@ class Ticket extends Model
         return URL::signedRoute($route, ['ticket' => $this], absolute: false);
     }
 
+    public function absoluteFeedbackUrl(string $route = 'tickets.feedback.show'): string
+    {
+        return rtrim((string) config('app.url'), '/').$this->feedbackUrl($route);
+    }
+
     public function hasAttachment(): bool
     {
         if ($this->relationLoaded('attachments')) {

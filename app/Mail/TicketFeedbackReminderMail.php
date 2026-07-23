@@ -25,7 +25,7 @@ class TicketFeedbackReminderMail extends Mailable
     public function content(): Content
     {
         return new Content(view: 'mail.ticket-feedback-reminder', with: [
-            'feedbackUrl' => $this->ticket->feedbackUrl(),
+            'feedbackUrl' => $this->ticket->absoluteFeedbackUrl(),
         ]);
     }
 }

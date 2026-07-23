@@ -26,7 +26,7 @@ class TicketStatusUpdatedMail extends Mailable
     {
         return new Content(view: 'mail.ticket-status-updated', with: [
             'feedbackUrl' => $this->ticket->canReceiveFeedback()
-                ? $this->ticket->feedbackUrl()
+                ? $this->ticket->absoluteFeedbackUrl()
                 : null,
         ]);
     }
