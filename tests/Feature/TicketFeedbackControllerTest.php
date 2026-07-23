@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Mail\TicketFeedbackReceivedMail;
+use App\Mail\TicketFeedbackThankYouMail;
 use App\Models\IssueType;
 use App\Models\PriorityLevel;
 use App\Models\SupportSystem;
@@ -15,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Mail\Mailables\Attachment;
 use Tests\TestCase;
 
 class TicketFeedbackControllerTest extends TestCase
@@ -74,6 +76,17 @@ class TicketFeedbackControllerTest extends TestCase
         Storage::disk('local')->assertExists($ticket->feedback->incident_report_path);
 
         Mail::assertSent(TicketFeedbackReceivedMail::class, fn (TicketFeedbackReceivedMail $mail) => $mail->hasTo($support->email));
+        Mail::assertSent(TicketFeedbackThankYouMail::class, function (TicketFeedbackThankYouMail $mail) use ($ticket) {
+            $attachments = $mail->attachments();
+
+            return $mail->hasTo($ticket->email)
+                && count($attachments) === 1
+                && $attachments[0]->isEquivalent(
+                    Attachment::fromStorageDisk('local', $ticket->feedback->incident_report_path)
+                        ->as($ticket->ticket_number.'-resolution-report.pdf')
+                        ->withMime('application/pdf')
+                );
+        });
     }
 
     public function test_feedback_form_requires_a_valid_signature(): void

@@ -117,7 +117,7 @@
                     <p class="text-muted mb-0">
                         {{ $performance['is_manager_scope'] ? 'All active ICT support staff are shown below.' : 'This view is scoped to your own assigned ticket performance.' }}
                     </p>
-                    <p class="text-muted small mb-0 mt-2">First response time is measured from ticket assignment to the first staff action recorded by a comment or workflow status change. Current backlog counts assigned tickets that are still open and past their expected resolution date.</p>
+                    <p class="text-muted small mb-0 mt-2">Assigned Tickets counts all tickets tagged to a staff member. Resolved Tickets counts tickets whose current status is <code>resolved</code>, Closed Tickets counts tickets whose current status is <code>closed</code>, and Active Tickets counts assigned tickets still pending resolution. Current backlog shows active tickets that are already past their expected resolution date.</p>
                 </div>
                 <div class="d-flex flex-column align-items-stretch gap-3">
                     <form method="GET" action="{{ route('dashboard') }}" class="row g-2 align-items-end">
@@ -145,7 +145,6 @@
                     'Staff in Scope' => $performance['summary']['staff_count'],
                     'Assigned Tickets' => $performance['summary']['tickets_assigned'],
                     'Resolved Tickets' => $performance['summary']['tickets_resolved'],
-                    'Closed Tickets' => $performance['summary']['tickets_closed'],
                     'Active Tickets' => $performance['summary']['active_tickets'],
                     'Current Backlog' => $performance['summary']['current_backlog'],
                     'Avg SLA Compliance' => $performance['summary']['avg_sla_compliance_rate'] === null ? 'N/A' : number_format($performance['summary']['avg_sla_compliance_rate'], 1).'%',
@@ -210,7 +209,7 @@
                 @foreach ($performance['rows'] as $row)
                     <fieldset class="app-fieldset">
                         <legend>{{ $row['staff_name'] }} Monthly Performance Trends</legend>
-                        <p class="text-muted small mb-3">DB mapping: Assigned uses <code>tickets.assigned_at</code>. Resolved and Closed use <code>ticket_status_logs.created_at</code> for this staff member's status changes. Avg Rating uses <code>ticket_feedback.submitted_at</code>.</p>
+                        <p class="text-muted small mb-3">DB mapping: Assigned is based on tickets currently assigned to this staff member. Resolved and Closed are based on the ticket's current status. Avg Rating uses <code>ticket_feedback.submitted_at</code>.</p>
                         <div class="table-responsive">
                             <table class="table table-bordered table-striped align-middle mb-0">
                                 <thead>

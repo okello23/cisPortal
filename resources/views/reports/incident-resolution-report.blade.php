@@ -15,10 +15,6 @@
             line-height: 1.45;
         }
 
-        /* ---- Outer document table: dompdf reliably repeats <thead> and <tfoot>
-             on every generated page. This is a native, well-tested dompdf feature,
-             unlike position:fixed which can drift to the wrong vertical position
-             on later pages once tables/page-break-inside are involved. ---- */
         table.doc {
             width: 100%;
             border-collapse: collapse;

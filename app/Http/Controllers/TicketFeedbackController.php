@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Mail\TicketFeedbackReceivedMail;
+use App\Mail\TicketFeedbackThankYouMail;
 use App\Models\Ticket;
 use App\Models\TicketFeedback;
 use App\Models\TicketStatusLog;
@@ -87,6 +88,10 @@ class TicketFeedbackController extends Controller
 
         if ($ticket->assignedStaff?->email) {
             rescue(fn () => Mail::to($ticket->assignedStaff->email)->send(new TicketFeedbackReceivedMail($ticket->fresh(['assignedStaff', 'feedback', 'system']))), report: false);
+        }
+
+        if ($ticket->email) {
+            rescue(fn () => Mail::to($ticket->email)->send(new TicketFeedbackThankYouMail($ticket->fresh(['assignedStaff', 'feedback', 'system']))), report: false);
         }
 
         return redirect()

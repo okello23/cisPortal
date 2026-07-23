@@ -68,10 +68,11 @@ class SupportPerformanceService
             $staffComments = $comments->where('created_by', $staffMember->id)->whereIn('ticket_id', $assignedTicketIds);
             $staffStatusLogs = $statusLogs->where('changed_by', $staffMember->id)->whereIn('ticket_id', $assignedTicketIds);
 
-            $resolvedTickets = $assignedTickets->filter(fn (Ticket $ticket) => $ticket->resolved_at !== null)->values();
-            $closedTickets = $assignedTickets->filter(fn (Ticket $ticket) => $ticket->closed_at !== null)->values();
-            $openTickets = $assignedTickets->filter(fn (Ticket $ticket) => ! in_array($ticket->status?->code, ['resolved', 'closed'], true))->values();
-            $overdueTickets = $openTickets->filter(function (Ticket $ticket) {
+            $resolvedTickets = $assignedTickets->filter(fn (Ticket $ticket) => $ticket->status?->code === 'resolved')->values();
+            $resolvedAndClosedTickets = $assignedTickets->filter(fn (Ticket $ticket) => in_array($ticket->status?->code, ['resolved', 'closed'], true))->values();
+            $closedTickets = $assignedTickets->filter(fn (Ticket $ticket) => $ticket->status?->code === 'closed')->values();
+            $activeTickets = $assignedTickets->filter(fn (Ticket $ticket) => ! in_array($ticket->status?->code, ['resolved', 'closed'], true))->values();
+            $overdueTickets = $activeTickets->filter(function (Ticket $ticket) {
                 return $ticket->expected_resolution_date !== null
                     && $ticket->expected_resolution_date->endOfDay()->lt(now());
             })->values();
@@ -87,8 +88,8 @@ class SupportPerformanceService
                 ->count();
 
             $averageFirstResponseHours = $this->averageFirstResponseHours($assignedTickets, $staffComments, $staffStatusLogs);
-            $averageResolutionHours = $this->averageResolutionHours($resolvedTickets);
-            $slaComplianceRate = $this->slaComplianceRate($resolvedTickets);
+            $averageResolutionHours = $this->averageResolutionHours($resolvedAndClosedTickets);
+            $slaComplianceRate = $this->slaComplianceRate($resolvedAndClosedTickets);
             $averageCustomerRating = $this->averageCustomerRating($assignedTickets);
 
             return [
@@ -105,7 +106,7 @@ class SupportPerformanceService
                 'avg_customer_rating' => $averageCustomerRating,
                 'reopened_tickets' => $reopenedCount,
                 'current_backlog' => $overdueTickets->count(),
-                'active_tickets' => $openTickets->count(),
+                'active_tickets' => $activeTickets->count(),
                 'monthly_trends' => $this->monthlyTrends($staffMember, $assignedTickets, $staffStatusLogs),
             ];
         })->values();

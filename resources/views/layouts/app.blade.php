@@ -200,6 +200,12 @@
                     <a class="btn btn-success rounded-pill px-4" href="{{ auth()->check() ? route('dashboard', [], false) : route('login', [], false) }}">
                         {{ auth()->check() ? 'Home' : 'Staff Login' }}
                     </a>
+                    @auth
+                        <form method="POST" action="{{ route('logout', [], false) }}" class="d-inline">
+                            @csrf
+                            <button type="submit" class="btn btn-outline-dark rounded-pill px-4">Logout</button>
+                        </form>
+                    @endauth
                 </div>
             </div>
         </div>

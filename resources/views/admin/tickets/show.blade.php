@@ -100,8 +100,8 @@
                     </div>
                     <div class="col-12"><strong>Root Cause Analysis:</strong><br>{{ $ticket->root_cause_analysis ?? 'Not recorded yet.' }}</div>
                     <div class="col-12"><strong>Verification / Testing:</strong><br>{{ $ticket->verification_testing ?? 'Not recorded yet.' }}</div>
-                    <div class="col-md-6"><strong>Data Loss Risk:</strong><br>{{ $ticket->data_loss_risk ? ucfirst($ticket->data_loss_risk) : 'Not recorded yet.' }}</div>
-                    <div class="col-md-6"><strong>Services Disrupted:</strong><br>{{ $ticket->services_disrupted ?? 'Not recorded yet.' }}</div>
+                    <div class="col-md-12"><strong>Data Loss Risk:</strong><br>{{ $ticket->data_loss_risk ? ucfirst($ticket->data_loss_risk) : 'Not recorded yet.' }}</div>
+                    <div class="col-md-12"><strong>Services Disrupted:</strong><br>{{ $ticket->services_disrupted ?? 'Not recorded yet.' }}</div>
                     <div class="col-12"><strong>Resolution Summary:</strong><br>{{ $ticket->resolution_summary ?? 'No resolution summary yet.' }}</div>
                     <div class="col-12"><strong>Work Done:</strong><br>{{ $ticket->work_done ?? 'Not recorded yet.' }}</div>
                     <div class="col-12"><strong>Recommendations:</strong><br>{{ $ticket->recommendations ?? 'Not recorded yet.' }}</div>
@@ -229,11 +229,11 @@
                                 <strong>Verification / Testing:</strong><br>
                                 {{ $ticket->verification_testing ?? 'Not recorded yet.' }}
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-12">
                                 <strong>Data Loss Risk:</strong><br>
                                 {{ $ticket->data_loss_risk ? ucfirst($ticket->data_loss_risk) : 'Not recorded yet.' }}
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-12">
                                 <strong>Services Disrupted:</strong><br>
                                 {{ $ticket->services_disrupted ?? 'Not recorded yet.' }}
                             </div>
