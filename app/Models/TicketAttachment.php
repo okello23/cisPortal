@@ -38,12 +38,12 @@ class TicketAttachment extends Model
 
     public function downloadUrl(): string
     {
-        return URL::signedRoute('tickets.attachments.show', ['attachment' => $this]);
+        return URL::signedRoute('tickets.attachments.show', ['attachment' => $this], absolute: false);
     }
 
     public function previewUrl(): string
     {
-        return URL::signedRoute('tickets.attachments.preview', ['attachment' => $this]);
+        return URL::signedRoute('tickets.attachments.preview', ['attachment' => $this], absolute: false);
     }
 
     public function isPreviewableImage(): bool
