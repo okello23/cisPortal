@@ -8,8 +8,6 @@ class AlisBackupScriptGenerator
 {
     public function generate(AlisBackupConfiguration $configuration): string
     {
-        $databasePassword = (string) $configuration->database_password;
-
         return <<<'BASH'
 #!/bin/bash
 
@@ -26,12 +24,13 @@ DB_PASS={{DB_PASS}}
 FACILITY={{FACILITY}}
 
 BACKUP_ROOT="$HOME/.backup"
-BACKUP_DIR="$BACKUP_ROOT/$FACILITY"
+BACKUP_DIR="$BACKUP_ROOT"
 
 REMOTE_SERVER={{REMOTE_SERVER}}
 REMOTE_USER={{REMOTE_USER}}
 REMOTE_PORT={{REMOTE_PORT}}
 REMOTE_ROOT={{REMOTE_ROOT}}
+REMOTE_FACILITY_DIR="$REMOTE_ROOT/$FACILITY/"
 
 SSH_KEY="$HOME/.ssh/alis_backup_ed25519"
 
@@ -74,7 +73,7 @@ fi
 
 log "Database backup created successfully."
 log "Backup file: $BACKUP_FILE"
-log "Starting upload to central backup server..."
+log "Starting upload to central backup server... $REMOTE_FACILITY_DIR/"
 
 set +e
 
@@ -83,8 +82,7 @@ sftp \
     -P "$REMOTE_PORT" \
     -o BatchMode=yes \
     "$REMOTE_USER@$REMOTE_SERVER" <<EOF >> "$LOG_FILE" 2>&1
-cd $REMOTE_ROOT/$FACILITY
-put "$BACKUP_FILE"
+put "${BACKUP_FILE}" "${REMOTE_FACILITY_DIR}/"
 bye
 EOF
 
