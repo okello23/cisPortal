@@ -72,6 +72,7 @@
                             <th>Added By</th>
                             <th>Date Added</th>
                             <th>Backup Directory</th>
+                            <th>Last Backup</th>
                             <th>Status</th>
                             <th class="text-end">Action</th>
                         </tr>
@@ -100,6 +101,19 @@
                                 <td>{{ $configuration->creator?->name ?? 'System' }}</td>
                                 <td>{{ $configuration->created_at?->format('Y-m-d H:i') ?? 'N/A' }}</td>
                                 <td class="font-monospace small">{{ $configuration->backup_directory_name }}</td>
+                                <td>
+                                    @php
+                                        $lastBackup = $lastBackups[$configuration->backup_directory_name] ?? null;
+                                    @endphp
+                                    @if ($lastBackups === null)
+                                        <span class="text-muted">Unavailable</span>
+                                    @elseif ($lastBackup)
+                                        <div class="fw-semibold">{{ $lastBackup->timezone(config('app.timezone'))->format('Y-m-d H:i') }}</div>
+                                        <div class="small text-muted">{{ $lastBackup->diffForHumans() }}</div>
+                                    @else
+                                        <span class="text-muted">No backup found</span>
+                                    @endif
+                                </td>
                                 <td>
                                     @php
                                         $badgeClass = match ($configuration->status) {

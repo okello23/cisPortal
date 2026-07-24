@@ -11,8 +11,9 @@ use App\Models\Facility;
 use App\Models\Region;
 use App\Models\User;
 use App\Support\AlisBackupConfigurationService;
-use App\Support\AlisRemoteBackupDeploymentService;
 use App\Support\AlisBackupProvisioningService;
+use App\Support\AlisBackupStatusService;
+use App\Support\AlisRemoteBackupDeploymentService;
 use App\Support\BackupDirectoryNameGenerator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -315,11 +316,16 @@ class AlisRemoteBackupKeysManager extends Component
 
     public function render(): View
     {
+        $configurations = $this->configurationRows();
+
         return view('livewire.alis-remote-backup-keys-manager', [
             'regions' => Region::query()->where('active', true)->orderBy('sort_order')->orderBy('name')->get(),
             'districtOptions' => $this->districtOptions(),
             'facilities' => $this->facilityOptions(),
-            'configurations' => $this->configurationRows(),
+            'configurations' => $configurations,
+            'lastBackups' => app(AlisBackupStatusService::class)->latestBackups(
+                $configurations->pluck('backup_directory_name')
+            ),
             'selectedFacility' => $this->selectedFacility(),
             'selectedConfiguration' => $this->selectedConfiguration(),
             'selectedKey' => $this->selectedKey(),

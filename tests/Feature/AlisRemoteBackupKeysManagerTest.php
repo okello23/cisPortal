@@ -277,6 +277,7 @@ class AlisRemoteBackupKeysManagerTest extends TestCase
         config()->set('alis_backup.port', 22);
         config()->set('alis_backup.root', '/dumps');
         config()->set('alis_backup.ssh_key', __FILE__);
+        config()->set('alis_backup.facility_offsite_server_ip', '105.27.247.146');
         config()->set('alis_remote_backup_keys.host', '105.27.247.146');
         config()->set('alis_remote_backup_keys.port', 22);
         config()->set('alis_remote_backup_keys.user', 'backupuser');
