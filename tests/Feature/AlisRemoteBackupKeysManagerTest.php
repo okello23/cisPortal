@@ -10,9 +10,11 @@ use App\Models\Facility;
 use App\Models\Region;
 use App\Models\User;
 use App\Support\AlisBackupConfigurationService;
+use App\Support\AlisBackupStatusService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Process;
 use Livewire\Livewire;
+use Mockery;
 use Tests\TestCase;
 
 class AlisRemoteBackupKeysManagerTest extends TestCase
@@ -221,6 +223,43 @@ class AlisRemoteBackupKeysManagerTest extends TestCase
         $this->actingAs($manager)
             ->get(route('infrastructure.alis-remote-backup-keys.download-script', $configuration))
             ->assertForbidden();
+    }
+
+    public function test_authorized_user_can_start_an_audited_backup_download(): void
+    {
+        $user = $this->actingAsSupportUser();
+        $facility = $this->makeFacility('Kayunga RRH', 'UG000070-KAYUNGA-RRH');
+        $this->configureProvisioning();
+
+        $configuration = app(AlisBackupConfigurationService::class)->saveConfiguration(
+            $facility,
+            'alis_kayunga',
+            'kayunga_user',
+            'password',
+            $this->makeEd25519PublicKey('kayunga-key'),
+            $user,
+        );
+        $filename = 'alisProduction_2026-07-24_16-29-00.sql.gz';
+        $backupStatusService = Mockery::mock(AlisBackupStatusService::class);
+        $backupStatusService->shouldReceive('assertDownloadable')
+            ->once()
+            ->with($configuration->backup_directory_name, $filename);
+        $this->app->instance(AlisBackupStatusService::class, $backupStatusService);
+
+        $this->actingAs($user)
+            ->get(route('infrastructure.alis-remote-backup-keys.download-backup', [
+                $configuration,
+                'filename' => $filename,
+            ]))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/gzip')
+            ->assertDownload($filename);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'downloaded_database_backup',
+            'auditable_id' => $configuration->id,
+            'user_id' => $user->id,
+        ]);
     }
 
     private function actingAsSupportUser(): User

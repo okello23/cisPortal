@@ -317,17 +317,22 @@ class AlisRemoteBackupKeysManager extends Component
     public function render(): View
     {
         $configurations = $this->configurationRows();
+        $backupStatusService = app(AlisBackupStatusService::class);
+        $selectedConfiguration = $this->selectedConfiguration();
 
         return view('livewire.alis-remote-backup-keys-manager', [
             'regions' => Region::query()->where('active', true)->orderBy('sort_order')->orderBy('name')->get(),
             'districtOptions' => $this->districtOptions(),
             'facilities' => $this->facilityOptions(),
             'configurations' => $configurations,
-            'lastBackups' => app(AlisBackupStatusService::class)->latestBackups(
+            'lastBackups' => $backupStatusService->latestBackups(
                 $configurations->pluck('backup_directory_name')
             ),
+            'recentBackupFiles' => $this->showFacilityDetailsModal && $selectedConfiguration
+                ? $backupStatusService->recentBackups($selectedConfiguration->backup_directory_name)
+                : [],
             'selectedFacility' => $this->selectedFacility(),
-            'selectedConfiguration' => $this->selectedConfiguration(),
+            'selectedConfiguration' => $selectedConfiguration,
             'selectedKey' => $this->selectedKey(),
             'history' => $this->selectedHistory(),
             'activeReasons' => AlisRemoteBackupKeyUpdateReason::query()->where('active', true)->orderBy('name')->get(),

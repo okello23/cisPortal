@@ -56,4 +56,32 @@ class AlisBackupStatusServiceTest extends TestCase
             app(AlisBackupStatusService::class)->latestBackups(new Collection(['kayunga_rrh']))
         );
     }
+
+    public function test_it_lists_only_the_three_most_recent_valid_backup_files(): void
+    {
+        config()->set('alis_backup.server', '105.27.247.146');
+        config()->set('alis_backup.user', 'backupuser');
+        config()->set('alis_backup.port', 22);
+        config()->set('alis_backup.root', '/dumps');
+        config()->set('alis_backup.ssh_key', __FILE__);
+
+        Process::fake([
+            '*' => Process::result(implode("\n", [
+                "1710000000.000\talisProduction_2026-07-21.sql.gz",
+                "1740000000.000\talisProduction_2026-07-24.sql.gz",
+                "1730000000.000\talisProduction_2026-07-23.sql.gz",
+                "1720000000.000\talisProduction_2026-07-22.sql.gz",
+                "1750000000.000\t../unsafe.sql.gz",
+            ]), '', 0),
+        ]);
+
+        $backups = app(AlisBackupStatusService::class)->recentBackups('kayunga_rrh');
+
+        $this->assertCount(3, $backups);
+        $this->assertSame([
+            'alisProduction_2026-07-24.sql.gz',
+            'alisProduction_2026-07-23.sql.gz',
+            'alisProduction_2026-07-22.sql.gz',
+        ], array_column($backups, 'filename'));
+    }
 }

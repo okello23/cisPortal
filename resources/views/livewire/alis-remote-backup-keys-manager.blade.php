@@ -273,6 +273,30 @@
                                         @if ($selectedKey?->last_deployment_error)
                                             <div class="alert alert-warning rounded-4 mb-0">{{ $selectedKey->last_deployment_error }}</div>
                                         @endif
+
+                                        <div class="border-top mt-3 pt-3">
+                                            <div class="small text-muted mb-2">Latest Backup Files</div>
+                                            @if ($recentBackupFiles === null)
+                                                <div class="text-muted small">Backup files are currently unavailable.</div>
+                                            @elseif (empty($recentBackupFiles))
+                                                <div class="text-muted small">No backup files found.</div>
+                                            @else
+                                                @foreach ($recentBackupFiles as $backupFile)
+                                                    <div class="d-flex align-items-start justify-content-between gap-3 py-2 {{ ! $loop->last ? 'border-bottom' : '' }}">
+                                                        <a
+                                                            href="{{ route('infrastructure.alis-remote-backup-keys.download-backup', [$selectedConfiguration, 'filename' => $backupFile['filename']]) }}"
+                                                            class="font-monospace small text-break"
+                                                            title="Download {{ $backupFile['filename'] }}"
+                                                        >
+                                                            {{ $backupFile['filename'] }}
+                                                        </a>
+                                                        <span class="small text-muted text-nowrap">
+                                                            {{ $backupFile['backed_up_at']->timezone(config('app.timezone'))->format('Y-m-d H:i') }}
+                                                        </span>
+                                                    </div>
+                                                @endforeach
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
                             </div>
