@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AdminTicketController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BugAssistantController;
 use App\Http\Controllers\Infrastructure\AlisRemoteBackupKeyController;
 use App\Http\Controllers\ManagerListController;
 use App\Http\Controllers\PasswordController;
@@ -53,6 +54,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/tickets/{ticket}/incident-resolution-report', [AdminTicketController::class, 'downloadIncidentResolutionReport'])->name('admin.tickets.incident-resolution-report');
         Route::get('/tickets/{ticket}/audit-trail', [AdminTicketController::class, 'auditTrail'])->name('admin.tickets.audit-trail');
         Route::put('/tickets/{ticket}', [AdminTicketController::class, 'update'])->name('admin.tickets.update');
+        Route::post('/tickets/{ticket}/ai-assistant', [BugAssistantController::class, 'store'])
+            ->middleware('throttle:6,1')
+            ->name('admin.tickets.ai-assistant.store');
         Route::get('/anti-spam', [PublicSubmissionAdminController::class, 'dashboard'])->name('admin.anti-spam.dashboard');
         Route::get('/anti-spam/quarantine', [PublicSubmissionAdminController::class, 'quarantine'])->name('admin.anti-spam.quarantine');
         Route::put('/anti-spam/quarantine/{ticket}', [PublicSubmissionAdminController::class, 'updateQuarantine'])->name('admin.anti-spam.quarantine.update');

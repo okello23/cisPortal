@@ -6,9 +6,9 @@ use App\Mail\TicketAssignedMail;
 use App\Mail\TicketEscalatedMail;
 use App\Mail\TicketStatusUpdatedMail;
 use App\Mail\TicketWorkAssignmentMail;
+use App\Models\AuditLog;
 use App\Models\ClosureReason;
 use App\Models\ResolutionCategory;
-use App\Models\AuditLog;
 use App\Models\Ticket;
 use App\Models\TicketComment;
 use App\Models\TicketFeedback;
@@ -18,11 +18,11 @@ use App\Models\User;
 use App\Support\AuditService;
 use App\Support\IncidentResolutionReportService;
 use App\Support\TicketRecipientResolver;
-use Illuminate\Support\Collection;
-use Illuminate\Support\CarbonInterval;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\CarbonInterval;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -36,9 +36,7 @@ class AdminTicketController extends Controller
         private readonly AuditService $auditService,
         private readonly TicketRecipientResolver $ticketRecipientResolver,
         private readonly IncidentResolutionReportService $incidentResolutionReportService,
-    )
-    {
-    }
+    ) {}
 
     public function index(Request $request): View
     {
@@ -89,6 +87,7 @@ class AdminTicketController extends Controller
             'resolutionCategory',
             'closureReason',
             'attachments',
+            'aiMessages.user:id,name',
             'comments.author',
             'statusLogs' => fn ($query) => $query
                 ->with(['oldStatus', 'newStatus', 'changedBy'])

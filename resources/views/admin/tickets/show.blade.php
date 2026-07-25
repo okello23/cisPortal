@@ -15,6 +15,11 @@
             ->sortByDesc('created_at')
             ->first();
         $turnaroundInterval = ($isClosedTicket ? $ticket->closed_at : $ticket->resolved_at)?->diff($ticket->created_at);
+        $aiImages = $ticket->attachments
+            ->filter(fn ($attachment) => $attachment->isPreviewableImage()
+                && ! in_array(strtoupper((string) $attachment->status), ['INFECTED', 'BLOCKED'], true)
+                && $attachment->file_size <= (int) config('services.openai.max_image_bytes'))
+            ->values();
     @endphp
 
     <div class="row g-4">
@@ -354,7 +359,213 @@
             </div>
         </div>
     </div>
+
+    <button
+        type="button"
+        class="btn btn-dark rounded-pill shadow ai-assistant-launcher"
+        data-bs-toggle="offcanvas"
+        data-bs-target="#bug-assistant"
+        aria-controls="bug-assistant"
+    >
+        <img
+            src="{{ asset('images/ai/japanese-spitz-assistant-v2.png') }}"
+            alt=""
+            class="ai-assistant-launcher-face"
+            aria-hidden="true"
+        >
+        AI Bug Assistant
+        <span class="badge text-bg-warning ms-1">Beta</span>
+    </button>
+
+    <div class="offcanvas offcanvas-end ai-assistant-panel" tabindex="-1" id="bug-assistant" aria-labelledby="bug-assistant-title">
+        <div class="offcanvas-header border-bottom">
+            <div class="d-flex align-items-center gap-2">
+                <img
+                    src="{{ asset('images/ai/japanese-spitz-assistant-v2.png') }}"
+                    alt="Japanese Spitz AI assistant mascot"
+                    class="ai-assistant-header-face"
+                >
+                <div>
+                    <h2 class="offcanvas-title h5 mb-1" id="bug-assistant-title">
+                        AI Bug Assistant
+                        <span class="badge text-bg-warning align-middle ms-1">Beta</span>
+                    </h2>
+                    <p class="small text-muted mb-0">Advisory analysis for {{ $ticket->ticket_number }}</p>
+                </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column p-0">
+            <div class="alert alert-warning rounded-0 border-0 small mb-0 py-2">
+                Review suggestions before acting. Do not select screenshots containing passwords, patient information, or access tokens.
+            </div>
+
+            @if (! config('services.openai.api_key'))
+                <div class="alert alert-secondary rounded-0 border-0 small mb-0 py-2">
+                    The assistant needs an administrator to configure <code>OPENAI_API_KEY</code>.
+                </div>
+            @endif
+
+            <div id="ai-chat-messages" class="ai-chat-messages flex-grow-1 p-3" aria-live="polite">
+                @forelse ($ticket->aiMessages as $message)
+                    <div class="ai-message ai-message--{{ $message->role }}">
+                        <div class="small fw-semibold mb-1">
+                            {{ $message->role === 'assistant' ? 'AI Assistant' : ($message->user?->name ?? 'Staff') }}
+                        </div>
+                        <div class="ai-message-content">{{ $message->content }}</div>
+                    </div>
+                @empty
+                    <div class="text-center text-muted small py-5" id="ai-chat-empty">
+                        Select a screenshot, then ask the assistant to identify visible errors and suggest diagnostic checks.
+                    </div>
+                @endforelse
+            </div>
+
+            <form id="ai-assistant-form" class="border-top p-3">
+                @if ($aiImages->isNotEmpty())
+                    <fieldset class="mb-3">
+                        <legend class="small fw-semibold mb-2">Screenshots to analyze (maximum 3)</legend>
+                        <div class="d-flex gap-2 overflow-auto pb-1">
+                            @foreach ($aiImages as $attachment)
+                                <label class="ai-image-choice flex-shrink-0">
+                                    <input
+                                        type="checkbox"
+                                        name="attachment_ids[]"
+                                        value="{{ $attachment->id }}"
+                                        class="form-check-input"
+                                        @checked($loop->first)
+                                    >
+                                    <img src="{{ $attachment->previewUrl() }}" alt="{{ $attachment->original_filename }}">
+                                    <span title="{{ $attachment->original_filename }}">{{ \Illuminate\Support\Str::limit($attachment->original_filename, 16) }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </fieldset>
+                @endif
+
+                <label for="ai-assistant-message" class="visually-hidden">Message</label>
+                <textarea
+                    id="ai-assistant-message"
+                    class="form-control mb-2"
+                    rows="3"
+                    maxlength="3000"
+                    placeholder="{{ $aiImages->isNotEmpty() ? 'Analyze the selected screenshot and suggest likely root causes…' : 'Ask about this bug report…' }}"
+                    required
+                ></textarea>
+                <div id="ai-assistant-error" class="text-danger small mb-2 d-none" role="alert"></div>
+                <div class="d-flex justify-content-between align-items-center gap-2">
+                    <span class="small text-muted">Nothing is applied automatically.</span>
+                    <button type="submit" class="btn btn-dark rounded-pill px-4" id="ai-assistant-send">
+                        Analyze
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 @endsection
+
+@push('styles')
+    <style>
+        .ai-assistant-launcher {
+            position: fixed;
+            right: 1.5rem;
+            bottom: 1.5rem;
+            z-index: 1030;
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+        }
+
+        .ai-assistant-launcher-face {
+            width: 2rem;
+            height: 2rem;
+            margin: -.35rem .15rem -.35rem -.55rem;
+            border: 2px solid rgba(255, 255, 255, .8);
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .ai-assistant-header-face {
+            width: 3rem;
+            height: 3rem;
+            border: 2px solid #f0b44d;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .ai-assistant-panel {
+            width: min(480px, 100vw) !important;
+        }
+
+        .ai-chat-messages {
+            min-height: 260px;
+            overflow-y: auto;
+            background: #f8fafc;
+        }
+
+        .ai-message {
+            max-width: 92%;
+            padding: .75rem .9rem;
+            margin-bottom: .8rem;
+            border-radius: 1rem;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .ai-message--assistant {
+            position: relative;
+            padding-left: 3.5rem;
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-bottom-left-radius: .25rem;
+        }
+
+        .ai-message--assistant::before {
+            position: absolute;
+            top: .7rem;
+            left: .7rem;
+            width: 2.15rem;
+            height: 2.15rem;
+            border: 1px solid #f0b44d;
+            border-radius: 50%;
+            background: url('{{ asset('images/ai/japanese-spitz-assistant-v2.png') }}') center / cover;
+            content: '';
+        }
+
+        .ai-message--user {
+            margin-left: auto;
+            color: #fff;
+            background: #212529;
+            border-bottom-right-radius: .25rem;
+        }
+
+        .ai-image-choice {
+            width: 98px;
+            padding: .4rem;
+            border: 1px solid #dee2e6;
+            border-radius: .75rem;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        .ai-image-choice img {
+            display: block;
+            width: 84px;
+            height: 58px;
+            margin: .35rem 0;
+            object-fit: cover;
+            border-radius: .4rem;
+        }
+
+        .ai-image-choice span {
+            display: block;
+            font-size: .72rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
+@endpush
 
 @push('scripts')
     <script>
@@ -417,6 +628,101 @@
 
             statusSelect.addEventListener('change', toggleWorkflowFields);
             toggleWorkflowFields();
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('ai-assistant-form');
+            const input = document.getElementById('ai-assistant-message');
+            const messages = document.getElementById('ai-chat-messages');
+            const sendButton = document.getElementById('ai-assistant-send');
+            const errorBox = document.getElementById('ai-assistant-error');
+
+            if (!form || !input || !messages || !sendButton || !errorBox) {
+                return;
+            }
+
+            const addMessage = (role, content, label) => {
+                document.getElementById('ai-chat-empty')?.remove();
+                const wrapper = document.createElement('div');
+                wrapper.className = `ai-message ai-message--${role}`;
+
+                const heading = document.createElement('div');
+                heading.className = 'small fw-semibold mb-1';
+                heading.textContent = label;
+
+                const body = document.createElement('div');
+                body.className = 'ai-message-content';
+                body.textContent = content;
+
+                wrapper.append(heading, body);
+                messages.appendChild(wrapper);
+                messages.scrollTop = messages.scrollHeight;
+                return wrapper;
+            };
+
+            form.addEventListener('change', (event) => {
+                if (!event.target.matches('input[name="attachment_ids[]"]')) {
+                    return;
+                }
+
+                const selected = form.querySelectorAll('input[name="attachment_ids[]"]:checked');
+                if (selected.length > 3) {
+                    event.target.checked = false;
+                    errorBox.textContent = 'Choose no more than three screenshots.';
+                    errorBox.classList.remove('d-none');
+                }
+            });
+
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                const message = input.value.trim();
+                if (!message) {
+                    return;
+                }
+
+                errorBox.classList.add('d-none');
+                const attachmentIds = Array.from(
+                    form.querySelectorAll('input[name="attachment_ids[]"]:checked')
+                ).map((checkbox) => Number(checkbox.value));
+                const pending = addMessage('user', message, 'You');
+
+                input.value = '';
+                input.disabled = true;
+                sendButton.disabled = true;
+                sendButton.textContent = 'Analyzing…';
+
+                try {
+                    const response = await fetch(@json(route('admin.tickets.ai-assistant.store', $ticket)), {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': @json(csrf_token()),
+                        },
+                        body: JSON.stringify({
+                            message,
+                            attachment_ids: attachmentIds,
+                        }),
+                    });
+                    const payload = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(payload.message || Object.values(payload.errors || {}).flat()[0] || 'Analysis failed.');
+                    }
+
+                    addMessage('assistant', payload.message.content, 'AI Assistant');
+                } catch (error) {
+                    pending.remove();
+                    input.value = message;
+                    errorBox.textContent = error.message || 'The AI assistant could not complete the analysis.';
+                    errorBox.classList.remove('d-none');
+                } finally {
+                    input.disabled = false;
+                    sendButton.disabled = false;
+                    sendButton.textContent = 'Analyze';
+                    input.focus();
+                }
+            });
         });
     </script>
 @endpush

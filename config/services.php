@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'openai' => [
+        'api_key' => env('OPENAI_API_KEY'),
+        'base_url' => env('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
+        'bug_assistant_model' => env('OPENAI_BUG_ASSISTANT_MODEL', 'gpt-5.6-sol'),
+        'timeout' => (int) env('OPENAI_TIMEOUT', 90),
+        'max_image_bytes' => (int) env('OPENAI_MAX_IMAGE_BYTES', 6291456),
+    ],
+
 ];
