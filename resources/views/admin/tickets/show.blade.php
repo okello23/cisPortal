@@ -373,7 +373,7 @@
             class="ai-assistant-launcher-face"
             aria-hidden="true"
         >
-        AI Bug Assistant
+        Ai Assistant
         <span class="badge text-bg-warning ms-1">Beta</span>
     </button>
 
@@ -387,7 +387,7 @@
                 >
                 <div>
                     <h2 class="offcanvas-title h5 mb-1" id="bug-assistant-title">
-                        AI Bug Assistant
+                        Ai Assistant
                         <span class="badge text-bg-warning align-middle ms-1">Beta</span>
                     </h2>
                     <p class="small text-muted mb-0">Advisory analysis for {{ $ticket->ticket_number }}</p>
