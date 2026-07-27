@@ -30,9 +30,11 @@ REMOTE_SERVER={{REMOTE_SERVER}}
 REMOTE_USER={{REMOTE_USER}}
 REMOTE_PORT={{REMOTE_PORT}}
 REMOTE_ROOT={{REMOTE_ROOT}}
-REMOTE_FACILITY_DIR="$REMOTE_ROOT/$FACILITY/"
+REMOTE_FACILITY_DIR="$REMOTE_ROOT/$FACILITY"
 
 SSH_KEY="$HOME/.ssh/alis_backup_ed25519"
+SSH_DIR="$HOME/.ssh"
+KNOWN_HOSTS_FILE="$SSH_DIR/known_hosts"
 
 LOG_FILE="$BACKUP_ROOT/backup.log"
 
@@ -73,16 +75,46 @@ fi
 
 log "Database backup created successfully."
 log "Backup file: $BACKUP_FILE"
+
+mkdir -p "$SSH_DIR"
+chmod 700 "$SSH_DIR"
+
+touch "$KNOWN_HOSTS_FILE"
+chmod 600 "$KNOWN_HOSTS_FILE"
+
+if ! ssh-keygen \
+    -F "$REMOTE_SERVER" \
+    -f "$KNOWN_HOSTS_FILE" \
+    >/dev/null 2>&1; then
+
+    log "Registering backup server host key..."
+
+    if ! ssh-keyscan \
+        -p 22 \
+        -H "$REMOTE_SERVER" \
+        >> "$KNOWN_HOSTS_FILE" 2>> "$LOG_FILE"; then
+
+        log "ERROR: Failed to retrieve the backup server host key."
+        exit 1
+    fi
+
+    chmod 600 "$KNOWN_HOSTS_FILE"
+    log "Backup server host key registered successfully."
+fi
+
 log "Starting upload to central backup server... $REMOTE_FACILITY_DIR/"
 
 set +e
 
 sftp \
     -i "$SSH_KEY" \
-    -P "$REMOTE_PORT" \
+    -P 22 \
     -o BatchMode=yes \
+    -o StrictHostKeyChecking=yes \
+    -o UserKnownHostsFile="$KNOWN_HOSTS_FILE" \
     "$REMOTE_USER@$REMOTE_SERVER" <<EOF >> "$LOG_FILE" 2>&1
-put "${BACKUP_FILE}" "${REMOTE_FACILITY_DIR}/"
+cd "$REMOTE_FACILITY_DIR"
+put "$BACKUP_FILE"
 bye
 EOF
 

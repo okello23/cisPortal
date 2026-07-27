@@ -180,6 +180,7 @@ class AlisRemoteBackupKeysManager extends Component
         $configurationService = app(AlisBackupConfigurationService::class);
         $this->flashMessage = null;
         $this->flashError = null;
+        $this->normalizePublicKey();
 
         $this->validate([
             'facilityId' => ['required', 'exists:facilities,id'],
@@ -225,6 +226,11 @@ class AlisRemoteBackupKeysManager extends Component
         } catch (ValidationException $exception) {
             $this->setErrorBag($exception->validator->getMessageBag());
         }
+    }
+
+    public function normalizePublicKey(): void
+    {
+        $this->publicKey = preg_replace('/\s+/', ' ', trim($this->publicKey)) ?? '';
     }
 
     public function retryProvisioning(int $configurationId): void

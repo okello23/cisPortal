@@ -49,6 +49,31 @@ class AlisRemoteBackupKeysManagerTest extends TestCase
         ]);
     }
 
+    public function test_pasted_public_key_whitespace_is_normalized_before_save(): void
+    {
+        $user = $this->actingAsSupportUser();
+        $facility = $this->makeFacility('Hoima RRH', 'UG000003-HOIMA-RRH');
+        $this->configureProvisioning();
+        $key = $this->makeEd25519PublicKey('alis backup key');
+        [$type, $body] = explode(' ', $key, 3);
+
+        Livewire::actingAs($user)
+            ->test(AlisRemoteBackupKeysManager::class)
+            ->set('facilityId', (string) $facility->id)
+            ->set('databaseName', 'alis_hoima')
+            ->set('databaseUsername', 'alis_user')
+            ->set('databasePassword', 'super-secret')
+            ->set('publicKey', " \n\t{$type}\t {$body} \r\n alis   backup\tkey \n")
+            ->call('saveConfiguration')
+            ->assertHasNoErrors()
+            ->assertSet('publicKey', "{$type} {$body} alis backup key");
+
+        $this->assertDatabaseHas('alis_remote_backup_keys', [
+            'facility_id' => $facility->id,
+            'public_key' => "{$type} {$body} alis backup key",
+        ]);
+    }
+
     public function test_blank_password_preserves_existing_saved_password(): void
     {
         $user = $this->actingAsSupportUser();
@@ -193,6 +218,9 @@ class AlisRemoteBackupKeysManagerTest extends TestCase
         $this->assertStringContainsString('SSH_KEY="$HOME/.ssh/alis_backup_ed25519"', $response->streamedContent());
         $this->assertStringContainsString("REMOTE_SERVER='105.27.247.146'", $response->streamedContent());
         $this->assertStringContainsString("DB_PASS='p'\"'\"'ass'", $response->streamedContent());
+        $this->assertStringContainsString('KNOWN_HOSTS_FILE="$SSH_DIR/known_hosts"', $response->streamedContent());
+        $this->assertStringContainsString('-o StrictHostKeyChecking=yes', $response->streamedContent());
+        $this->assertStringContainsString('-o UserKnownHostsFile="$KNOWN_HOSTS_FILE"', $response->streamedContent());
         $this->assertStringNotContainsString('/root/.ssh/cis_backup_deploy', $response->streamedContent());
 
         $log = AuditLog::query()->where('action', 'downloaded_backup_script')->firstOrFail();

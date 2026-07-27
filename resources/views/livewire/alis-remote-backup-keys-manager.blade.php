@@ -471,6 +471,7 @@
                                     class="form-control font-monospace"
                                     rows="6"
                                     wire:model="publicKey"
+                                    wire:blur="normalizePublicKey"
                                     placeholder="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... alis-offsite-backup"
                                 ></textarea>
                             </div>
