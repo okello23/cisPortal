@@ -14,7 +14,8 @@ class AlisBackupScriptGeneratorTest extends TestCase
         config()->set('alis_backup.facility_offsite_server_ip', '105.27.247.146');
         config()->set('alis_backup.user', 'backupuser');
         config()->set('alis_backup.port', 22);
-        config()->set('alis_backup.root', '/dumps');
+        config()->set('alis_backup.root', '/backup/dumps');
+        config()->set('alis_backup.dumps_root', '/dumps');
         config()->set('alis_backup.ssh_key', '/root/.ssh/cis_backup_deploy');
 
         $configuration = new AlisBackupConfiguration([
@@ -31,6 +32,8 @@ class AlisBackupScriptGeneratorTest extends TestCase
         $this->assertStringContainsString("DB_PASS='pa'\"'\"'ss'", $script);
         $this->assertStringContainsString("FACILITY='lemusi_hciii'", $script);
         $this->assertStringContainsString("REMOTE_SERVER='105.27.247.146'", $script);
+        $this->assertStringContainsString("REMOTE_ROOT='/dumps'", $script);
+        $this->assertStringNotContainsString("REMOTE_ROOT='/backup/dumps'", $script);
         $this->assertStringContainsString('BACKUP_DIR="$BACKUP_ROOT"', $script);
         $this->assertStringContainsString('REMOTE_FACILITY_DIR="$REMOTE_ROOT/$FACILITY"', $script);
         $this->assertStringContainsString('SSH_DIR="$HOME/.ssh"', $script);
@@ -58,7 +61,8 @@ class AlisBackupScriptGeneratorTest extends TestCase
     public function test_generated_script_passes_bash_syntax_validation(): void
     {
         config()->set('alis_backup.facility_offsite_server_ip', '105.27.247.146');
-        config()->set('alis_backup.root', '/dumps');
+        config()->set('alis_backup.root', '/backup/dumps');
+        config()->set('alis_backup.dumps_root', '/dumps');
 
         $configuration = new AlisBackupConfiguration([
             'backup_directory_name' => 'syntax_test',

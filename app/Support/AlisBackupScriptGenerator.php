@@ -159,7 +159,7 @@ BASH;
             '{{REMOTE_SERVER}}' => $this->shellEscape((string) config('alis_backup.facility_offsite_server_ip')),
             '{{REMOTE_USER}}' => $this->shellEscape('backupuser'),
             '{{REMOTE_PORT}}' => $this->shellEscape('22'),
-            '{{REMOTE_ROOT}}' => $this->shellEscape((string) config('alis_backup.root')),
+            '{{REMOTE_ROOT}}' => $this->shellEscape((string) config('alis_backup.dumps_root', '/dumps')),
         ]);
     }
 
