@@ -21,10 +21,11 @@ use App\Support\SubmissionQuarantineService;
 use App\Support\SubmissionRateLimitService;
 use App\Support\SubmissionRiskService;
 use App\Support\TicketNumberService;
+use App\Support\TicketRecipientResolver;
 use App\Support\TurnstileVerificationService;
-use Illuminate\Http\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -45,8 +46,8 @@ class PublicTicketController extends Controller
         private readonly DuplicateTicketDetectionService $duplicateTicketDetectionService,
         private readonly SubmissionQuarantineService $submissionQuarantineService,
         private readonly PublicSubmissionSecurityEventService $securityEventService,
-    ) {
-    }
+        private readonly TicketRecipientResolver $ticketRecipientResolver,
+    ) {}
 
     public function create(Request $request): View
     {
@@ -245,7 +246,7 @@ class PublicTicketController extends Controller
 
         if ($ticket->submission_review_status !== 'QUARANTINED') {
             rescue(function () use ($ticket) {
-                Mail::to(config('mail.from.address', 'ictsupport@cphl.go.ug'))
+                Mail::to($this->ticketRecipientResolver->newTicketAlertEmails())
                     ->queue(new NewTicketAlertMail($ticket));
             }, report: false);
 

@@ -115,4 +115,6 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    'ict_support_address' => env('ICT_SUPPORT_EMAIL', 'ictsupport@cphl.go.ug'),
+
 ];

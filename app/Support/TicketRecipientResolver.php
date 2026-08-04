@@ -6,6 +6,19 @@ use App\Models\User;
 
 class TicketRecipientResolver
 {
+    public function newTicketAlertEmails(): array
+    {
+        return collect($this->emailsForRoles([
+            User::ROLE_ICT_MANAGER,
+            User::ROLE_ICT_ADMIN,
+        ]))
+            ->push(config('mail.ict_support_address'))
+            ->filter()
+            ->unique(fn (string $email) => mb_strtolower($email))
+            ->values()
+            ->all();
+    }
+
     public function escalationCcEmails(?string $excludeEmail = null): array
     {
         return $this->emailsForRoles([User::ROLE_ICT_MANAGER], [$excludeEmail]);

@@ -56,7 +56,11 @@ class PublicTicketSubmissionSecurityTest extends TestCase
         $this->assertTrue($ticket->turnstile_verified);
         $this->assertTrue($ticket->attachments()->exists());
 
-        Mail::assertQueued(NewTicketAlertMail::class);
+        Mail::assertQueued(NewTicketAlertMail::class, function (NewTicketAlertMail $mail): bool {
+            return $mail->hasTo('manager@cphl.go.ug')
+                && $mail->hasTo('admin@cphl.go.ug')
+                && $mail->hasTo('ictsupport@cphl.go.ug');
+        });
         Mail::assertQueued(TicketConfirmationMail::class);
     }
 
