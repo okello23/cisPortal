@@ -98,7 +98,7 @@
                     @endif
                     <h2 class="h5">Manager Lists</h2>
                     <div class="d-grid gap-2">
-                        <a href="{{ route('infrastructure.alis-remote-backup-keys.index') }}" class="btn btn-outline-success text-start rounded-4">Infrastructure: A-LIS Remote Backup Keys ALIS Backups &amp; Configurations</a>
+                        <a href="{{ route('infrastructure.alis-remote-backup-keys.index') }}" class="btn btn-outline-success text-start rounded-4">Infrastructure: A-LIS Backups &amp; Configurations</a>
                         @foreach (\App\Http\Controllers\ManagerListController::availableListsForUser(auth()->user()) as $key => $label)
                             <a href="{{ route('lists.index', $key) }}" class="btn btn-outline-secondary text-start rounded-4">{{ $label }}</a>
                         @endforeach
