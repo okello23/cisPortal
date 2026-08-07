@@ -188,7 +188,7 @@
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li>
-                                    <a class="dropdown-item" href="{{ route('infrastructure.alis-remote-backup-keys.index', [], false) }}">A-LIS Remote Backup Keys</a>
+                                    <a class="dropdown-item" href="{{ route('infrastructure.alis-remote-backup-keys.index', [], false) }}">A-LIS Remote Backup Keys ALIS Backups &amp; Configurations</a>
                                 </li>
                             </ul>
                         </div>
