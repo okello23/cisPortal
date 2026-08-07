@@ -290,6 +290,42 @@ class AlisRemoteBackupKeysManagerTest extends TestCase
         ]);
     }
 
+    public function test_backup_statistics_count_active_facilities_with_and_without_backup_files(): void
+    {
+        $user = $this->actingAsSupportUser();
+        $backingUp = $this->makeFacility('Backing Up RRH', 'UG000080-BACKING-UP');
+        $configuredWithoutBackup = $this->makeFacility('No Backup RRH', 'UG000081-NO-BACKUP');
+        $this->makeFacility('Not Configured RRH', 'UG000082-NOT-CONFIGURED');
+        $this->configureProvisioning();
+
+        foreach ([$backingUp, $configuredWithoutBackup] as $facility) {
+            app(AlisBackupConfigurationService::class)->saveConfiguration(
+                $facility,
+                'alis_database',
+                'alis_user',
+                'password',
+                $this->makeEd25519PublicKey($facility->code),
+                $user,
+            );
+        }
+
+        $backingUpDirectory = AlisBackupConfiguration::query()
+            ->where('facility_id', $backingUp->id)
+            ->value('backup_directory_name');
+
+        Process::fake([
+            '*' => Process::result("1750000000.000\t5242880\t/dumps/{$backingUpDirectory}", '', 0),
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(AlisRemoteBackupKeysManager::class)
+            ->assertViewHas('backingUpCount', 1)
+            ->assertViewHas('notBackingUpCount', 2)
+            ->set('keySearch', 'Backing Up')
+            ->assertViewHas('backingUpCount', 1)
+            ->assertViewHas('notBackingUpCount', 2);
+    }
+
     private function actingAsSupportUser(): User
     {
         Region::query()->create(['name' => 'Northern', 'code' => 'northern']);

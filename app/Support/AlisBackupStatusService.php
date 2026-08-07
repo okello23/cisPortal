@@ -12,7 +12,7 @@ use Symfony\Component\Process\Process as SymfonyProcess;
 class AlisBackupStatusService
 {
     /**
-     * @return array<int, array{filename: string, backed_up_at: CarbonImmutable}>|null
+     * @return array<int, array{filename: string, backed_up_at: CarbonImmutable, size_bytes: int}>|null
      */
     public function recentBackups(string $directoryName, int $limit = 3): ?array
     {
@@ -31,7 +31,7 @@ class AlisBackupStatusService
             'find %s -maxdepth 1 -type f -name %s -printf %s',
             $this->shellEscape($directory),
             $this->shellEscape('*.sql.gz'),
-            $this->shellEscape("%T@\t%f\n"),
+            $this->shellEscape("%T@\t%s\t%f\n"),
         );
 
         try {
@@ -49,16 +49,23 @@ class AlisBackupStatusService
                         return null;
                     }
 
-                    [$timestamp, $filename] = explode("\t", $line, 2);
+                    $parts = explode("\t", $line, 3);
+
+                    if (count($parts) !== 3) {
+                        return null;
+                    }
+
+                    [$timestamp, $size, $filename] = $parts;
                     $filename = trim($filename);
 
-                    if (! is_numeric($timestamp) || ! $this->isBackupFilename($filename)) {
+                    if (! is_numeric($timestamp) || ! ctype_digit($size) || ! $this->isBackupFilename($filename)) {
                         return null;
                     }
 
                     return [
                         'filename' => $filename,
                         'backed_up_at' => CarbonImmutable::createFromTimestamp((int) floor((float) $timestamp)),
+                        'size_bytes' => (int) $size,
                     ];
                 })
                 ->filter()
@@ -133,7 +140,7 @@ class AlisBackupStatusService
 
     /**
      * @param  Collection<int, string>  $directoryNames
-     * @return array<string, CarbonImmutable|null>|null
+     * @return array<string, array{backed_up_at: CarbonImmutable, size_bytes: int}|null>|null
      */
     public function latestBackups(Collection $directoryNames): ?array
     {
@@ -153,7 +160,7 @@ class AlisBackupStatusService
             'find %s -mindepth 2 -maxdepth 2 -type f -name %s -printf %s',
             $this->shellEscape($connection['root']),
             $this->shellEscape('*.sql.gz'),
-            $this->shellEscape("%T@\t%h\n"),
+            $this->shellEscape("%T@\t%s\t%h\n"),
         );
 
         try {
@@ -172,17 +179,26 @@ class AlisBackupStatusService
                     continue;
                 }
 
-                [$timestamp, $directory] = explode("\t", $line, 2);
+                $parts = explode("\t", $line, 3);
+
+                if (count($parts) !== 3) {
+                    continue;
+                }
+
+                [$timestamp, $size, $directory] = $parts;
                 $directoryName = basename(trim($directory));
 
-                if (! array_key_exists($directoryName, $latestBackups) || ! is_numeric($timestamp)) {
+                if (! array_key_exists($directoryName, $latestBackups) || ! is_numeric($timestamp) || ! ctype_digit($size)) {
                     continue;
                 }
 
                 $backedUpAt = CarbonImmutable::createFromTimestamp((int) floor((float) $timestamp));
 
-                if ($latestBackups[$directoryName] === null || $backedUpAt->isAfter($latestBackups[$directoryName])) {
-                    $latestBackups[$directoryName] = $backedUpAt;
+                if ($latestBackups[$directoryName] === null || $backedUpAt->isAfter($latestBackups[$directoryName]['backed_up_at'])) {
+                    $latestBackups[$directoryName] = [
+                        'backed_up_at' => $backedUpAt,
+                        'size_bytes' => (int) $size,
+                    ];
                 }
             }
 
@@ -195,6 +211,22 @@ class AlisBackupStatusService
 
             return null;
         }
+    }
+
+    public static function formatBytes(int $bytes): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $value = max(0, $bytes);
+        $unit = 0;
+
+        while ($value >= 1024 && $unit < count($units) - 1) {
+            $value /= 1024;
+            $unit++;
+        }
+
+        $decimals = $unit === 0 ? 0 : ($value >= 10 ? 1 : 2);
+
+        return number_format($value, $decimals).' '.$units[$unit];
     }
 
     private function shellEscape(string $value): string

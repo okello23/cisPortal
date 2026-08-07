@@ -325,15 +325,27 @@ class AlisRemoteBackupKeysManager extends Component
         $configurations = $this->configurationRows();
         $backupStatusService = app(AlisBackupStatusService::class);
         $selectedConfiguration = $this->selectedConfiguration();
+        $configuredDirectories = AlisBackupConfiguration::query()
+            ->pluck('backup_directory_name');
+        $activeFacilityDirectories = AlisBackupConfiguration::query()
+            ->whereHas('facility', fn (Builder $query) => $query->where('active', true))
+            ->pluck('backup_directory_name');
+        $lastBackups = $backupStatusService->latestBackups(
+            $configuredDirectories
+        );
+        $activeFacilityCount = Facility::query()->where('active', true)->count();
+        $backingUpCount = $lastBackups === null
+            ? null
+            : $activeFacilityDirectories->filter(
+                fn (string $directory) => ($lastBackups[$directory] ?? null) !== null
+            )->count();
 
         return view('livewire.alis-remote-backup-keys-manager', [
             'regions' => Region::query()->where('active', true)->orderBy('sort_order')->orderBy('name')->get(),
             'districtOptions' => $this->districtOptions(),
             'facilities' => $this->facilityOptions(),
             'configurations' => $configurations,
-            'lastBackups' => $backupStatusService->latestBackups(
-                $configurations->pluck('backup_directory_name')
-            ),
+            'lastBackups' => $lastBackups,
             'recentBackupFiles' => $this->showFacilityDetailsModal && $selectedConfiguration
                 ? $backupStatusService->recentBackups($selectedConfiguration->backup_directory_name)
                 : [],
@@ -346,6 +358,8 @@ class AlisRemoteBackupKeysManager extends Component
             'pendingCount' => AlisBackupConfiguration::query()->where('status', AlisBackupConfiguration::STATUS_PENDING_PROVISIONING)->count(),
             'failedCount' => AlisBackupConfiguration::query()->where('status', AlisBackupConfiguration::STATUS_PROVISIONING_FAILED)->count(),
             'provisionedCount' => AlisBackupConfiguration::query()->where('status', AlisBackupConfiguration::STATUS_PROVISIONED)->count(),
+            'backingUpCount' => $backingUpCount,
+            'notBackingUpCount' => $backingUpCount === null ? null : max(0, $activeFacilityCount - $backingUpCount),
         ]);
     }
 

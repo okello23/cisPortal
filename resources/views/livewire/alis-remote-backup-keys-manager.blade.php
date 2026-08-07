@@ -31,22 +31,34 @@
 
 
             <div class="row g-3 mb-4">
-                <div class="col-md-4">
+                <div class="col-md">
                     <div class="metric-card p-3 h-100">
                         <div class="fs-3 fw-bold">{{ $pendingCount }}</div>
                         <div class="text-muted small">Pending</div>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md">
                     <div class="metric-card p-3 h-100">
                         <div class="fs-3 fw-bold">{{ $provisionedCount }}</div>
                         <div class="text-muted small">Provisioned</div>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md">
                     <div class="metric-card p-3 h-100">
                         <div class="fs-3 fw-bold">{{ $failedCount }}</div>
                         <div class="text-muted small">Failed</div>
+                    </div>
+                </div>
+                <div class="col-md">
+                    <div class="metric-card p-3 h-100">
+                        <div class="fs-3 fw-bold">{{ $backingUpCount ?? '—' }}</div>
+                        <div class="text-muted small">Facilities Backing Up</div>
+                    </div>
+                </div>
+                <div class="col-md">
+                    <div class="metric-card p-3 h-100">
+                        <div class="fs-3 fw-bold">{{ $notBackingUpCount ?? '—' }}</div>
+                        <div class="text-muted small">Facilities Not Backing Up</div>
                     </div>
                 </div>
             </div>
@@ -108,8 +120,11 @@
                                     @if ($lastBackups === null)
                                         <span class="text-muted">Unavailable</span>
                                     @elseif ($lastBackup)
-                                        <div class="fw-semibold">{{ $lastBackup->timezone(config('app.timezone'))->format('Y-m-d H:i') }}</div>
-                                        <div class="small text-muted">{{ $lastBackup->diffForHumans() }}</div>
+                                        <div class="fw-semibold">{{ $lastBackup['backed_up_at']->timezone(config('app.timezone'))->format('Y-m-d H:i') }}</div>
+                                        <div class="small text-muted">
+                                            {{ $lastBackup['backed_up_at']->diffForHumans() }}
+                                            · {{ \App\Support\AlisBackupStatusService::formatBytes($lastBackup['size_bytes']) }}
+                                        </div>
                                     @else
                                         <span class="text-muted">No backup found</span>
                                     @endif
@@ -291,7 +306,8 @@
                                                             {{ $backupFile['filename'] }}
                                                         </a>
                                                         <span class="small text-muted text-nowrap">
-                                                            {{ $backupFile['backed_up_at']->timezone(config('app.timezone'))->format('Y-m-d H:i') }}
+                                                            {{ \App\Support\AlisBackupStatusService::formatBytes($backupFile['size_bytes']) }}
+                                                            · {{ $backupFile['backed_up_at']->timezone(config('app.timezone'))->format('Y-m-d H:i') }}
                                                         </span>
                                                     </div>
                                                 @endforeach
