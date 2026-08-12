@@ -14,14 +14,16 @@
                     <!-- <p class="text-muted mb-0">Manage facility database backup settings, central server provisioning, and script downloads in one place.</p> -->
                 </div>
                 <div class="d-flex gap-2">
-                    <a
-                        href="{{ asset('docs/A-LIS%20Backup%20Restoration%20SOP.pdf') }}"
+                    <button
+                        type="button"
                         class="btn btn-outline-dark rounded-pill px-4"
-                        download
-                        target="_blank"
-                        rel="noopener"
+                        data-bs-toggle="modal"
+                        data-bs-target="#backupSopModal"
                     >
-                        Download SOP PDF
+                        View SOP
+                    </button>
+                    <a href="{{ asset('docs/a-lis-db-backup-sop-linux.pdf') }}" class="btn btn-outline-dark rounded-pill px-4" download>
+                        Download PDF
                     </a>
                     <button type="button" class="btn btn-dark rounded-pill px-4" wire:click="openCreateModal">
                         Add Backup Configuration
@@ -414,7 +416,7 @@
                                 <div class="small text-muted">Download the Linux Ubuntu off-site database backup and restoration SOP for step-by-step guidance.</div>
                             </div>
                             <a
-                                href="{{ asset('docs/A-LIS%20Backup%20Restoration%20SOP.pdf') }}"
+                                href="{{ asset('docs/a-lis-db-backup-sop-linux.pdf') }}"
                                 class="btn btn-outline-dark rounded-pill px-4"
                                 download
                                 target="_blank"
@@ -523,4 +525,33 @@
             </div>
         </div>
     @endif
+
+    <div class="modal fade" id="backupSopModal" tabindex="-1" aria-labelledby="backupSopModalLabel" aria-hidden="true" wire:ignore.self>
+        <div class="modal-dialog modal-fullscreen-xl-down modal-xl modal-dialog-centered">
+            <div class="modal-content border-0 rounded-4 overflow-hidden" style="height: min(90vh, 960px);">
+                <div class="modal-header px-4">
+                    <div>
+                        <h2 class="modal-title h5 mb-1" id="backupSopModalLabel">A-LIS Database Backup &amp; Restoration SOP</h2>
+                        <p class="small text-muted mb-0">Linux/Ubuntu setup, automated backups, and restoration guidance.</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0 bg-light">
+                    <iframe
+                        src="{{ asset('docs/a-lis-db-backup-sop-linux.html') }}"
+                        title="A-LIS Database Backup and Restoration SOP"
+                        class="w-100 h-100 border-0"
+                    ></iframe>
+                </div>
+                <div class="modal-footer px-4">
+                    <a href="{{ asset('docs/a-lis-db-backup-sop-linux.html') }}" class="btn btn-outline-secondary rounded-pill px-4" target="_blank" rel="noopener">
+                        Open in New Tab
+                    </a>
+                    <a href="{{ asset('docs/a-lis-db-backup-sop-linux.pdf') }}" class="btn btn-dark rounded-pill px-4" download>
+                        Download PDF
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
