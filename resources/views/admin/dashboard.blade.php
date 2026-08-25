@@ -506,17 +506,16 @@
                         <legend>Monthly Ticket Trends</legend>
                         <div class="table-responsive">
                             <table class="table table-bordered table-striped mb-0">
-                                <thead><tr><th>Month</th><th>Total</th><th>Resolved</th><th>Closed</th></tr></thead>
+                                <thead><tr><th>Month</th><th>Total</th><th>Resolved &amp; Closed</th></tr></thead>
                                 <tbody>
                                     @forelse ($managerDashboard['monthly_ticket_trends'] as $row)
                                         <tr>
                                             <td>{{ $row['label'] }}</td>
                                             <td>{{ $row['total'] }}</td>
-                                            <td>{{ $row['resolved'] }}</td>
-                                            <td>{{ $row['closed'] }}</td>
+                                            <td>{{ $row['resolved'] + $row['closed'] }}</td>
                                         </tr>
                                     @empty
-                                        <tr><td colspan="4" class="text-center text-muted">No ticket activity recorded yet.</td></tr>
+                                        <tr><td colspan="3" class="text-center text-muted">No ticket activity recorded yet.</td></tr>
                                     @endforelse
                                 </tbody>
                             </table>
@@ -528,14 +527,13 @@
                         <legend>Annual Ticket Trends</legend>
                         <div class="table-responsive">
                             <table class="table table-bordered table-striped mb-0">
-                                <thead><tr><th>Year</th><th>Total</th><th>Resolved</th><th>Closed</th></tr></thead>
+                                <thead><tr><th>Year</th><th>Total</th><th>Resolved &amp; Closed</th></tr></thead>
                                 <tbody>
                                     @foreach ($managerDashboard['annual_ticket_trends'] as $row)
                                         <tr>
                                             <td>{{ $row['label'] }}</td>
                                             <td>{{ $row['total'] }}</td>
-                                            <td>{{ $row['resolved'] }}</td>
-                                            <td>{{ $row['closed'] }}</td>
+                                            <td>{{ $row['resolved'] + $row['closed'] }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
