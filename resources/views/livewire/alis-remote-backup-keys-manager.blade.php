@@ -40,10 +40,10 @@
                     </div>
                 </div>
                 <div class="col-md">
-                    <div class="metric-card p-3 h-100">
+                    <button type="button" class="metric-card p-3 h-100 w-100 border-0 text-start" wire:click="showFacilityList('provisioned')">
                         <div class="fs-3 fw-bold">{{ $provisionedCount }}</div>
                         <div class="text-muted small">Provisioned</div>
-                    </div>
+                    </button>
                 </div>
                 <div class="col-md">
                     <div class="metric-card p-3 h-100">
@@ -52,16 +52,16 @@
                     </div>
                 </div>
                 <div class="col-md">
-                    <div class="metric-card p-3 h-100">
+                    <button type="button" class="metric-card p-3 h-100 w-100 border-0 text-start" wire:click="showFacilityList('backing_up')">
                         <div class="fs-3 fw-bold">{{ $backingUpCount ?? '—' }}</div>
                         <div class="text-muted small">Facilities Backing Up</div>
-                    </div>
+                    </button>
                 </div>
                 <div class="col-md">
-                    <div class="metric-card p-3 h-100">
+                    <button type="button" class="metric-card p-3 h-100 w-100 border-0 text-start" wire:click="showFacilityList('not_backing_up')">
                         <div class="fs-3 fw-bold">{{ $notBackingUpCount ?? '—' }}</div>
-                        <div class="text-muted small">Facilities Not Backing Up</div>
-                    </div>
+                        <div class="text-muted small">No Backups for More Than 3 Days</div>
+                    </button>
                 </div>
             </div>
 
@@ -204,6 +204,56 @@
                 </table>
             </div>
         </div>
+
+    @if ($facilityListMetric)
+        <div class="modal fade show d-block" tabindex="-1" aria-modal="true" role="dialog" style="background: rgba(10, 28, 43, 0.45);">
+            <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+                <div class="modal-content border-0 rounded-4">
+                    <div class="modal-header border-0 px-4 pt-4">
+                        <div>
+                            <h2 class="modal-title h4 mb-1">{{ $facilityListTitle }}</h2>
+                            <p class="text-muted mb-0">{{ $facilityListConfigurations->count() }} {{ $facilityListConfigurations->count() === 1 ? 'facility' : 'facilities' }}</p>
+                        </div>
+                        <button type="button" class="btn-close" wire:click="closeFacilityList" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body px-4 pb-4">
+                        <div class="table-responsive border rounded-4 overflow-hidden">
+                            <table class="table align-middle mb-0">
+                                <thead><tr><th>Facility</th><th>Backup Directory</th><th>Last Backup</th></tr></thead>
+                                <tbody>
+                                    @forelse ($facilityListConfigurations as $configuration)
+                                        @php
+                                            $facility = $configuration?->facility ?? $facilityListFacilities->get($loop->index);
+                                        @endphp
+                                        @php
+                                            $lastBackup = $configuration ? ($lastBackups[$configuration->backup_directory_name] ?? null) : null;
+                                        @endphp
+                                        <tr>
+                                            <td>
+                                                <button type="button" class="btn btn-link p-0 text-decoration-none text-start fw-semibold" wire:click="openFacilityDetails({{ $facility->id }})">{{ $facility->name }}</button>
+                                                <div class="small text-muted">{{ $facility->district_name ?: 'No district' }}@if ($facility->region?->name) | {{ $facility->region->name }}@endif</div>
+                                            </td>
+                                            <td class="font-monospace small">{{ $configuration?->backup_directory_name ?? 'Not provisioned' }}</td>
+                                            <td>
+                                                @if ($lastBackup)
+                                                    <div class="fw-semibold">{{ $lastBackup['backed_up_at']->timezone(config('app.timezone'))->format('Y-m-d H:i') }}</div>
+                                                    <div class="small text-muted">{{ $lastBackup['backed_up_at']->diffForHumans() }}</div>
+                                                @else
+                                                    <span class="text-muted">No backup found</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr><td colspan="3" class="text-center text-muted py-4">No facilities match this status.</td></tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 
     @if ($showFacilityDetailsModal)
         <div class="modal fade show d-block" tabindex="-1" aria-modal="true" role="dialog" style="background: rgba(10, 28, 43, 0.45);">

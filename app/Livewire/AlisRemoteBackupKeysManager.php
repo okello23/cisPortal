@@ -55,6 +55,8 @@ class AlisRemoteBackupKeysManager extends Component
 
     public bool $showFacilityDetailsModal = false;
 
+    public ?string $facilityListMetric = null;
+
     public ?int $confirmingDeactivationConfigurationId = null;
 
     public function mount(): void
@@ -126,12 +128,25 @@ class AlisRemoteBackupKeysManager extends Component
         $this->normalizeSelections();
         $this->syncBackupDirectoryName($directoryNameGenerator);
         $this->loadSelectedConfigurationIntoForm($directoryNameGenerator);
+        $this->facilityListMetric = null;
         $this->showFacilityDetailsModal = true;
     }
 
     public function closeFacilityDetailsModal(): void
     {
         $this->showFacilityDetailsModal = false;
+    }
+
+    public function showFacilityList(string $metric): void
+    {
+        abort_unless(in_array($metric, ['provisioned', 'backing_up', 'not_backing_up'], true), 404);
+
+        $this->facilityListMetric = $metric;
+    }
+
+    public function closeFacilityList(): void
+    {
+        $this->facilityListMetric = null;
     }
 
     public function confirmDeactivation(int $configurationId): void
@@ -325,20 +340,39 @@ class AlisRemoteBackupKeysManager extends Component
         $configurations = $this->configurationRows();
         $backupStatusService = app(AlisBackupStatusService::class);
         $selectedConfiguration = $this->selectedConfiguration();
-        $configuredDirectories = AlisBackupConfiguration::query()
-            ->pluck('backup_directory_name');
-        $activeFacilityDirectories = AlisBackupConfiguration::query()
-            ->whereHas('facility', fn (Builder $query) => $query->where('active', true))
-            ->pluck('backup_directory_name');
+        $configuredDirectories = AlisBackupConfiguration::query()->pluck('backup_directory_name');
         $lastBackups = $backupStatusService->latestBackups(
             $configuredDirectories
         );
-        $activeFacilityCount = Facility::query()->where('active', true)->count();
-        $backingUpCount = $lastBackups === null
-            ? null
-            : $activeFacilityDirectories->filter(
-                fn (string $directory) => ($lastBackups[$directory] ?? null) !== null
-            )->count();
+        $provisionedConfigurations = AlisBackupConfiguration::query()
+            ->with(['facility.region'])
+            ->where('status', AlisBackupConfiguration::STATUS_PROVISIONED)
+            ->orderBy('facility_id')
+            ->get();
+        $activeFacilities = Facility::query()
+            ->with('region')
+            ->where('active', true)
+            ->orderBy('name')
+            ->get();
+        $provisionedByFacility = $provisionedConfigurations->keyBy('facility_id');
+        $backupCutoff = now()->subDays(3);
+        $backingUpFacilities = $lastBackups === null ? collect() : $provisionedConfigurations
+            ->filter(fn (AlisBackupConfiguration $configuration) => $configuration->facility->active)
+            ->filter(fn (AlisBackupConfiguration $configuration) => ($lastBackups[$configuration->backup_directory_name]['backed_up_at'] ?? null)?->isAfter($backupCutoff));
+        $notBackingUpFacilities = $lastBackups === null ? collect() : $activeFacilities
+            ->filter(function (Facility $facility) use ($provisionedByFacility, $lastBackups, $backupCutoff) {
+                $configuration = $provisionedByFacility->get($facility->id);
+
+                return ! $configuration || ! (($lastBackups[$configuration->backup_directory_name]['backed_up_at'] ?? null)?->isAfter($backupCutoff));
+            });
+        $facilityListConfigurations = match ($this->facilityListMetric) {
+            'provisioned' => $provisionedConfigurations,
+            'backing_up' => $backingUpFacilities,
+            'not_backing_up' => $notBackingUpFacilities->map(
+                fn (Facility $facility) => $provisionedByFacility->get($facility->id)
+            ),
+            default => collect(),
+        };
 
         return view('livewire.alis-remote-backup-keys-manager', [
             'regions' => Region::query()->where('active', true)->orderBy('sort_order')->orderBy('name')->get(),
@@ -358,8 +392,18 @@ class AlisRemoteBackupKeysManager extends Component
             'pendingCount' => AlisBackupConfiguration::query()->where('status', AlisBackupConfiguration::STATUS_PENDING_PROVISIONING)->count(),
             'failedCount' => AlisBackupConfiguration::query()->where('status', AlisBackupConfiguration::STATUS_PROVISIONING_FAILED)->count(),
             'provisionedCount' => AlisBackupConfiguration::query()->where('status', AlisBackupConfiguration::STATUS_PROVISIONED)->count(),
-            'backingUpCount' => $backingUpCount,
-            'notBackingUpCount' => $backingUpCount === null ? null : max(0, $activeFacilityCount - $backingUpCount),
+            'backingUpCount' => $lastBackups === null ? null : $backingUpFacilities->count(),
+            'notBackingUpCount' => $lastBackups === null ? null : $notBackingUpFacilities->count(),
+            'facilityListTitle' => match ($this->facilityListMetric) {
+                'provisioned' => 'Provisioned Facilities',
+                'backing_up' => 'Facilities Backing Up',
+                'not_backing_up' => 'Facilities Without Backups for More Than 3 Days',
+                default => '',
+            },
+            'facilityListConfigurations' => $facilityListConfigurations,
+            'facilityListFacilities' => $this->facilityListMetric === 'not_backing_up'
+                ? $notBackingUpFacilities->values()
+                : collect(),
         ]);
     }
 

@@ -314,7 +314,7 @@ class AlisRemoteBackupKeysManagerTest extends TestCase
             ->value('backup_directory_name');
 
         Process::fake([
-            '*' => Process::result("1750000000.000\t5242880\t/dumps/{$backingUpDirectory}", '', 0),
+            '*' => Process::result(now()->timestamp.".000\t5242880\t/dumps/{$backingUpDirectory}", '', 0),
         ]);
 
         Livewire::actingAs($user)
