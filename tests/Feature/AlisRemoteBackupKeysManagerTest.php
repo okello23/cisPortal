@@ -320,10 +320,10 @@ class AlisRemoteBackupKeysManagerTest extends TestCase
         Livewire::actingAs($user)
             ->test(AlisRemoteBackupKeysManager::class)
             ->assertViewHas('backingUpCount', 1)
-            ->assertViewHas('notBackingUpCount', 2)
+            ->assertViewHas('notBackingUpCount', 1)
             ->set('keySearch', 'Backing Up')
             ->assertViewHas('backingUpCount', 1)
-            ->assertViewHas('notBackingUpCount', 2);
+            ->assertViewHas('notBackingUpCount', 1);
     }
 
     private function actingAsSupportUser(): User

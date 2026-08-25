@@ -54,7 +54,7 @@
                 <div class="col-md">
                     <button type="button" class="metric-card p-3 h-100 w-100 border-0 text-start" wire:click="showFacilityList('backing_up')">
                         <div class="fs-3 fw-bold">{{ $backingUpCount ?? '—' }}</div>
-                        <div class="text-muted small">Facilities Backing Up</div>
+                        <div class="text-muted small">Facilities Actively Backing Up</div>
                     </button>
                 </div>
                 <div class="col-md">
@@ -223,17 +223,14 @@
                                 <tbody>
                                     @forelse ($facilityListConfigurations as $configuration)
                                         @php
-                                            $facility = $configuration?->facility ?? $facilityListFacilities->get($loop->index);
-                                        @endphp
-                                        @php
-                                            $lastBackup = $configuration ? ($lastBackups[$configuration->backup_directory_name] ?? null) : null;
+                                            $lastBackup = $lastBackups[$configuration->backup_directory_name] ?? null;
                                         @endphp
                                         <tr>
                                             <td>
-                                                <button type="button" class="btn btn-link p-0 text-decoration-none text-start fw-semibold" wire:click="openFacilityDetails({{ $facility->id }})">{{ $facility->name }}</button>
-                                                <div class="small text-muted">{{ $facility->district_name ?: 'No district' }}@if ($facility->region?->name) | {{ $facility->region->name }}@endif</div>
+                                                <button type="button" class="btn btn-link p-0 text-decoration-none text-start fw-semibold" wire:click="openFacilityDetails({{ $configuration->facility_id }})">{{ $configuration->facility->name }}</button>
+                                                <div class="small text-muted">{{ $configuration->facility->district_name ?: 'No district' }}@if ($configuration->facility->region?->name) | {{ $configuration->facility->region->name }}@endif</div>
                                             </td>
-                                            <td class="font-monospace small">{{ $configuration?->backup_directory_name ?? 'Not provisioned' }}</td>
+                                            <td class="font-monospace small">{{ $configuration->backup_directory_name }}</td>
                                             <td>
                                                 @if ($lastBackup)
                                                     <div class="fw-semibold">{{ $lastBackup['backed_up_at']->timezone(config('app.timezone'))->format('Y-m-d H:i') }}</div>

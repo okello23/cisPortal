@@ -349,28 +349,17 @@ class AlisRemoteBackupKeysManager extends Component
             ->where('status', AlisBackupConfiguration::STATUS_PROVISIONED)
             ->orderBy('facility_id')
             ->get();
-        $activeFacilities = Facility::query()
-            ->with('region')
-            ->where('active', true)
-            ->orderBy('name')
-            ->get();
-        $provisionedByFacility = $provisionedConfigurations->keyBy('facility_id');
         $backupCutoff = now()->subDays(3);
         $backingUpFacilities = $lastBackups === null ? collect() : $provisionedConfigurations
             ->filter(fn (AlisBackupConfiguration $configuration) => $configuration->facility->active)
             ->filter(fn (AlisBackupConfiguration $configuration) => ($lastBackups[$configuration->backup_directory_name]['backed_up_at'] ?? null)?->isAfter($backupCutoff));
-        $notBackingUpFacilities = $lastBackups === null ? collect() : $activeFacilities
-            ->filter(function (Facility $facility) use ($provisionedByFacility, $lastBackups, $backupCutoff) {
-                $configuration = $provisionedByFacility->get($facility->id);
-
-                return ! $configuration || ! (($lastBackups[$configuration->backup_directory_name]['backed_up_at'] ?? null)?->isAfter($backupCutoff));
-            });
+        $notBackingUpFacilities = $lastBackups === null ? collect() : $provisionedConfigurations
+            ->filter(fn (AlisBackupConfiguration $configuration) => $configuration->facility->active)
+            ->filter(fn (AlisBackupConfiguration $configuration) => ! (($lastBackups[$configuration->backup_directory_name]['backed_up_at'] ?? null)?->isAfter($backupCutoff)));
         $facilityListConfigurations = match ($this->facilityListMetric) {
             'provisioned' => $provisionedConfigurations,
             'backing_up' => $backingUpFacilities,
-            'not_backing_up' => $notBackingUpFacilities->map(
-                fn (Facility $facility) => $provisionedByFacility->get($facility->id)
-            ),
+            'not_backing_up' => $notBackingUpFacilities,
             default => collect(),
         };
 
@@ -401,9 +390,6 @@ class AlisRemoteBackupKeysManager extends Component
                 default => '',
             },
             'facilityListConfigurations' => $facilityListConfigurations,
-            'facilityListFacilities' => $this->facilityListMetric === 'not_backing_up'
-                ? $notBackingUpFacilities->values()
-                : collect(),
         ]);
     }
 
