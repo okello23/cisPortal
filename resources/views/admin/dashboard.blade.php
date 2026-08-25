@@ -487,13 +487,15 @@
                             <table class="table table-bordered table-striped mb-0">
                                 <thead><tr><th>Month</th><th>Average Rating</th><th>Responses</th></tr></thead>
                                 <tbody>
-                                    @foreach ($managerDashboard['customer_satisfaction_trends'] as $row)
+                                    @forelse ($managerDashboard['customer_satisfaction_trends'] as $row)
                                         <tr>
                                             <td>{{ $row['label'] }}</td>
                                             <td>{{ $row['average_rating'] === null ? 'N/A' : number_format($row['average_rating'], 1).'/5' }}</td>
                                             <td>{{ $row['responses'] }}</td>
                                         </tr>
-                                    @endforeach
+                                    @empty
+                                        <tr><td colspan="3" class="text-center text-muted">No feedback responses recorded yet.</td></tr>
+                                    @endforelse
                                 </tbody>
                             </table>
                         </div>
@@ -506,14 +508,16 @@
                             <table class="table table-bordered table-striped mb-0">
                                 <thead><tr><th>Month</th><th>Total</th><th>Resolved</th><th>Closed</th></tr></thead>
                                 <tbody>
-                                    @foreach ($managerDashboard['monthly_ticket_trends'] as $row)
+                                    @forelse ($managerDashboard['monthly_ticket_trends'] as $row)
                                         <tr>
                                             <td>{{ $row['label'] }}</td>
                                             <td>{{ $row['total'] }}</td>
                                             <td>{{ $row['resolved'] }}</td>
                                             <td>{{ $row['closed'] }}</td>
                                         </tr>
-                                    @endforeach
+                                    @empty
+                                        <tr><td colspan="4" class="text-center text-muted">No ticket activity recorded yet.</td></tr>
+                                    @endforelse
                                 </tbody>
                             </table>
                         </div>

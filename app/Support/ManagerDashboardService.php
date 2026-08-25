@@ -258,10 +258,7 @@ class ManagerDashboardService
 
     private function customerSatisfactionTrends(Collection $tickets): Collection
     {
-        $start = now()->copy()->startOfMonth()->subMonths(5);
-
-        return collect(range(0, 5))->map(function (int $offset) use ($tickets, $start) {
-            $month = $start->copy()->addMonths($offset);
+        return $this->trendMonths()->map(function (Carbon $month) use ($tickets) {
             $monthKey = $month->format('Y-m');
 
             $monthTickets = $tickets->filter(fn (Ticket $ticket) => $ticket->feedback?->submitted_at?->format('Y-m') === $monthKey)->values();
@@ -271,15 +268,12 @@ class ManagerDashboardService
                 'average_rating' => $this->averageRatingForTickets($monthTickets),
                 'responses' => $monthTickets->filter(fn (Ticket $ticket) => $ticket->feedback !== null)->count(),
             ];
-        });
+        })->filter(fn (array $row) => $row['responses'] > 0)->values();
     }
 
     private function monthlyTicketTrends(Collection $tickets): Collection
     {
-        $start = now()->copy()->startOfMonth()->subMonths(5);
-
-        return collect(range(0, 5))->map(function (int $offset) use ($tickets, $start) {
-            $month = $start->copy()->addMonths($offset);
+        return $this->trendMonths()->map(function (Carbon $month) use ($tickets) {
             $monthKey = $month->format('Y-m');
 
             return [
@@ -288,7 +282,21 @@ class ManagerDashboardService
                 'resolved' => $tickets->filter(fn (Ticket $ticket) => $ticket->resolved_at?->format('Y-m') === $monthKey)->count(),
                 'closed' => $tickets->filter(fn (Ticket $ticket) => $ticket->closed_at?->format('Y-m') === $monthKey)->count(),
             ];
-        });
+        })->filter(fn (array $row) => $row['total'] > 0 || $row['resolved'] > 0 || $row['closed'] > 0)->values();
+    }
+
+    private function trendMonths(): Collection
+    {
+        $currentMonth = now()->copy()->startOfMonth();
+        $start = $currentMonth->copy()->subMonths(5);
+        $deploymentMonth = Carbon::create(2026, 6, 1)->startOfMonth();
+
+        if ($start->lt($deploymentMonth)) {
+            $start = $deploymentMonth;
+        }
+
+        return collect(range(0, $start->diffInMonths($currentMonth)))
+            ->map(fn (int $offset) => $start->copy()->addMonths($offset));
     }
 
     private function annualTicketTrends(Collection $tickets): Collection
