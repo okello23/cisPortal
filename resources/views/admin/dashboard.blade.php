@@ -6,10 +6,7 @@
             <p class="text-uppercase text-muted fw-semibold small mb-1">Home</p>
             <h1 class="h2 mb-0">Welcome, {{ auth()->user()->name }}</h1>
         </div>
-        <form method="POST" action="{{ route('logout') }}">
-            @csrf
-            <button class="btn btn-outline-dark rounded-pill px-4">Logout</button>
-        </form>
+       
     </div>
 
     <div class="d-flex gap-2 flex-wrap mb-4">
