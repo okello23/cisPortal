@@ -43,7 +43,7 @@
                 <div class="row g-3">
                     <div class="col-md-6"><strong>Reporter:</strong> {{ $ticket->full_name }}</div>
                     <div class="col-md-6"><strong>Designation:</strong> {{ $ticket->designation?->name ?? 'N/A' }}</div>
-                    <div class="col-md-6"><strong>Contact:</strong> {{ $ticket->email ?? $ticket->phone ?? 'N/A' }}</div>
+                    <div class="col-md-6"><strong>Contact:</strong> {{ $ticket->phone ?? 'N/A' }}</div>
                     <div class="col-md-6"><strong>Lab Manager:</strong> {{ $ticket->lab_manager_name ?? 'N/A' }}</div>
                     <div class="col-md-6"><strong>Lab Manager Email:</strong> {{ $ticket->lab_manager_email ?? 'N/A' }}</div>
                     <div class="col-md-6"><strong>System:</strong> {{ $ticket->system->name }}</div>
