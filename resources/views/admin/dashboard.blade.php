@@ -91,6 +91,7 @@
                         <div class="mb-4">
                             <h2 class="h5">Administration</h2>
                             <a href="{{ \Illuminate\Support\Facades\Route::has('admin.users.index') ? route('admin.users.index') : url('/users') }}" class="btn btn-outline-dark rounded-4 w-100 text-start">Manage ICT Users</a>
+                            <a href="{{ route('admin.nutrition-users.index') }}" class="btn btn-outline-success rounded-4 w-100 text-start mt-2">Manage Nutrition Team Users</a>
                         </div>
                     @endif
                     <h2 class="h5">Manager Lists</h2>

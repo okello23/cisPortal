@@ -14,6 +14,9 @@ use App\Http\Controllers\TicketAttachmentController;
 use App\Http\Controllers\TicketFeedbackController;
 use App\Http\Controllers\TicketTrackingController;
 use App\Http\Controllers\UserManagementController;
+use App\Http\Controllers\PublicNutritionTaskController;
+use App\Http\Controllers\NutritionTaskController;
+use App\Http\Controllers\NutritionUserController;
 use App\Http\Middleware\EnsurePasswordIsCurrent;
 use Illuminate\Support\Facades\Route;
 
@@ -31,6 +34,8 @@ Route::get('/track/{ticket}/feedback', [TicketFeedbackController::class, 'create
 Route::post('/track/{ticket}/feedback', [TicketFeedbackController::class, 'store'])->middleware('signed:relative')->name('tickets.feedback.store');
 
 Route::get('/dashboard/public', [PublicDashboardController::class, 'index'])->name('dashboard.public');
+Route::get('/external-tasks', [PublicNutritionTaskController::class, 'create'])->name('nutrition-tasks.create');
+Route::post('/external-tasks', [PublicNutritionTaskController::class, 'store'])->middleware('throttle:10,1')->name('nutrition-tasks.store');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'create'])->name('login');
@@ -66,6 +71,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/users', [UserManagementController::class, 'index'])->name('admin.users.index');
         Route::post('/users', [UserManagementController::class, 'store'])->name('admin.users.store');
         Route::put('/users/{user}', [UserManagementController::class, 'update'])->name('admin.users.update');
+        Route::get('/nutrition-users', [NutritionUserController::class, 'index'])->name('admin.nutrition-users.index');
+        Route::post('/nutrition-users', [NutritionUserController::class, 'store'])->name('admin.nutrition-users.store');
+        Route::put('/nutrition-users/{nutritionTeamUser}', [NutritionUserController::class, 'update'])->name('admin.nutrition-users.update');
+        Route::get('/nutrition-dashboard', [NutritionTaskController::class, 'dashboard'])->name('nutrition-tasks.dashboard');
+        Route::get('/nutrition-tasks', [NutritionTaskController::class, 'index'])->name('nutrition-tasks.index');
+        Route::get('/nutrition-tasks/{nutritionTask}', [NutritionTaskController::class, 'show'])->name('nutrition-tasks.show');
+        Route::put('/nutrition-tasks/{nutritionTask}', [NutritionTaskController::class, 'update'])->name('nutrition-tasks.update');
         Route::get('/infrastructure/alis-remote-backup-keys', [AlisRemoteBackupKeyController::class, 'index'])->name('infrastructure.alis-remote-backup-keys.index');
         Route::get('/infrastructure/alis-remote-backup-keys/{configuration}/download-script', [AlisRemoteBackupKeyController::class, 'downloadScript'])->name('infrastructure.alis-remote-backup-keys.download-script');
         Route::get('/infrastructure/alis-remote-backup-keys/{configuration}/backups/{filename}', [AlisRemoteBackupKeyController::class, 'downloadBackup'])

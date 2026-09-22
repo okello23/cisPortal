@@ -22,6 +22,8 @@ class User extends Authenticatable implements CanResetPasswordContract
     public const ROLE_ICT_SUPERVISOR = 'ict_supervisor';
     public const ROLE_ICT_SUPPORT_STAFF = 'ict_support_staff';
     public const ROLE_DEVELOPER = 'developer';
+    public const ROLE_TASK_ADMIN = 'task_admin';
+    public const ROLE_NUTRITION_USER = 'nutrition_user';
 
     /**
      * The attributes that are mass assignable.
@@ -70,6 +72,16 @@ class User extends Authenticatable implements CanResetPasswordContract
         return $this->hasMany(Ticket::class, 'assigned_to');
     }
 
+    public function nutritionProfile(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(NutritionTeamUser::class);
+    }
+
+    public function isNutritionUser(): bool
+    {
+        return $this->hasAnyRole([self::ROLE_TASK_ADMIN, self::ROLE_NUTRITION_USER]);
+    }
+
     public function hasAnyRole(array $roles): bool
     {
         return in_array($this->role, $roles, true);
@@ -83,6 +95,8 @@ class User extends Authenticatable implements CanResetPasswordContract
             self::ROLE_ICT_SUPERVISOR => 'Software Development Supervisor',
             self::ROLE_ICT_SUPPORT_STAFF => 'ICT Support Staff',
             self::ROLE_DEVELOPER => 'Developer',
+            self::ROLE_TASK_ADMIN => 'Task Admin',
+            self::ROLE_NUTRITION_USER => 'Nutrition Team Member',
         ];
     }
 

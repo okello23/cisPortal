@@ -196,8 +196,9 @@
                     @if (request()->routeIs('dashboard.public'))
                         <a class="btn btn-cis-orange rounded-pill px-4" href="{{ route('tickets.create', [], false) }}">Log New Issue</a>
                     @endif
+                    <a class="btn btn-outline-dark rounded-pill px-4" href="{{ route('nutrition-tasks.create', [], false) }}">External Tasks</a>
                     <a class="btn btn-outline-dark rounded-pill px-4" href="{{ route('tickets.track', [], false) }}">Track Ticket</a>
-                    <a class="btn btn-success rounded-pill px-4" href="{{ auth()->check() ? route('dashboard', [], false) : route('login', [], false) }}">
+                    <a class="btn btn-success rounded-pill px-4" href="{{ auth()->check() && auth()->user()->isNutritionUser() ? route('nutrition-tasks.dashboard', [], false) : (auth()->check() ? route('dashboard', [], false) : route('login', [], false)) }}">
                         {{ auth()->check() ? 'Home' : 'Staff Login' }}
                     </a>
                     @auth
