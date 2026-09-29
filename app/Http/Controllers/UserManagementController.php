@@ -5,11 +5,11 @@ namespace App\Http\Controllers;
 use App\Mail\UserAccountCreatedMail;
 use App\Models\User;
 use App\Support\AuditService;
+use App\Support\OutboundMail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password as PasswordRule;
@@ -17,7 +17,7 @@ use Illuminate\View\View;
 
 class UserManagementController extends Controller
 {
-    public function __construct(private readonly AuditService $auditService)
+    public function __construct(private readonly AuditService $auditService, private readonly OutboundMail $outboundMail)
     {
     }
 
@@ -58,7 +58,9 @@ class UserManagementController extends Controller
 
         $this->auditService->log('user.created', $user, null, $user->toArray(), Auth::id(), $request);
 
-        Mail::to($user->email)->send(new UserAccountCreatedMail($user, $generatedPassword));
+        if (! $this->outboundMail->send($user->email, new UserAccountCreatedMail($user, $generatedPassword))) {
+            return back()->with('warning', 'User created, but the login email was not sent. Configure SMTP and set a new password for this user before asking them to sign in.');
+        }
 
         return back()->with('status', 'User created successfully. Login details have been emailed to the user.');
     }
@@ -113,6 +115,14 @@ class UserManagementController extends Controller
 
     private function roles(): array
     {
-        return User::roleLabels();
+        return collect(User::roleLabels())
+            ->only([
+                User::ROLE_ICT_ADMIN,
+                User::ROLE_ICT_MANAGER,
+                User::ROLE_ICT_SUPERVISOR,
+                User::ROLE_ICT_SUPPORT_STAFF,
+                User::ROLE_DEVELOPER,
+            ])
+            ->all();
     }
 }

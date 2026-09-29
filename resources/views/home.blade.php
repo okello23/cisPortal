@@ -106,6 +106,7 @@
                 <p class="lead mb-4">CIS is the official ticket intake and management platform for CPHL-supported digital systems, built for public reporting and internal accountability.</p>
                 <div class="d-flex flex-wrap gap-3">
                     <a class="btn btn-light btn-lg rounded-pill px-4" href="{{ route('tickets.create') }}">Submit Ticket</a>
+                    <a class="btn btn-cis-orange btn-lg rounded-pill px-4" href="{{ route('nutrition-tasks.create') }}">External Tasks</a>
                     <a class="btn btn-outline-light btn-lg rounded-pill px-4" href="{{ route('dashboard.public') }}">View Public Dashboard</a>
                 </div>
             </div>
