@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class SupportSystem extends Model
 {
@@ -14,5 +15,10 @@ class SupportSystem extends Model
     public function modules(): HasMany
     {
         return $this->hasMany(SupportModule::class, 'system_id');
+    }
+
+    public function inHouseBackupConfiguration(): HasOne
+    {
+        return $this->hasOne(InHouseBackupConfiguration::class, 'system_id');
     }
 }

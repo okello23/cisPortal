@@ -190,6 +190,9 @@
                                 <li>
                                     <a class="dropdown-item" href="{{ route('infrastructure.alis-remote-backup-keys.index', [], false) }}">A-LIS Remote Backup Keys ALIS Backups &amp; Configurations</a>
                                 </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ route('infrastructure.in-house-backups.index', [], false) }}">In-House Systems Backups</a>
+                                </li>
                             </ul>
                         </div>
                     @endauth

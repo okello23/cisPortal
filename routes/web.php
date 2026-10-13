@@ -5,6 +5,7 @@ use App\Http\Controllers\AdminTicketController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BugAssistantController;
 use App\Http\Controllers\Infrastructure\AlisRemoteBackupKeyController;
+use App\Http\Controllers\Infrastructure\InHouseBackupController;
 use App\Http\Controllers\ManagerListController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\PublicDashboardController;
@@ -83,6 +84,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/infrastructure/alis-remote-backup-keys/{configuration}/backups/{filename}', [AlisRemoteBackupKeyController::class, 'downloadBackup'])
             ->where('filename', '[A-Za-z0-9_.-]+\.sql\.gz')
             ->name('infrastructure.alis-remote-backup-keys.download-backup');
+        Route::get('/infrastructure/in-house-backups', [InHouseBackupController::class, 'index'])->name('infrastructure.in-house-backups.index');
+        Route::get('/infrastructure/in-house-backups/{configuration}/download-script', [InHouseBackupController::class, 'downloadScript'])->name('infrastructure.in-house-backups.download-script');
         Route::get('/lists/{list}', [ManagerListController::class, 'index'])->name('lists.index');
         Route::post('/lists/{list}', [ManagerListController::class, 'store'])->name('lists.store');
         Route::put('/lists/{list}/{id}', [ManagerListController::class, 'update'])->name('lists.update');
