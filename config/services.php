@@ -35,12 +35,12 @@ return [
         ],
     ],
 
-    'openai' => [
-        'api_key' => env('OPENAI_API_KEY'),
-        'base_url' => env('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
-        'bug_assistant_model' => env('OPENAI_BUG_ASSISTANT_MODEL', 'gpt-5.6-sol'),
-        'timeout' => (int) env('OPENAI_TIMEOUT', 90),
-        'max_image_bytes' => (int) env('OPENAI_MAX_IMAGE_BYTES', 6291456),
+    'openrouter' => [
+        'api_key' => env('OPENROUTER_API_KEY'),
+        'base_url' => env('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
+        'bug_assistant_model' => env('OPENROUTER_BUG_ASSISTANT_MODEL', 'openai/gpt-4o-mini'),
+        'timeout' => (int) env('OPENROUTER_TIMEOUT', 90),
+        'max_image_bytes' => (int) env('OPENROUTER_MAX_IMAGE_BYTES', 6291456),
     ],
 
 ];

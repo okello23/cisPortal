@@ -6,6 +6,7 @@ use App\Models\InHouseBackupConfiguration;
 use App\Models\SupportSystem;
 use App\Models\User;
 use App\Support\InHouseBackupProvisioningService;
+use App\Support\InHouseBackupStatusService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -22,6 +23,8 @@ class InHouseBackupsManager extends Component
     public string $databaseUsername = '';
     public string $databasePassword = '';
     public bool $showModal = false;
+    public bool $showBackupHistoryModal = false;
+    public ?int $historyConfigurationId = null;
     public string $search = '';
 
     public function mount(): void
@@ -50,6 +53,18 @@ class InHouseBackupsManager extends Component
         $this->databasePassword = '';
         $this->resetValidation();
         $this->showModal = true;
+    }
+
+    public function showBackupHistory(int $id): void
+    {
+        $this->historyConfigurationId = $id;
+        $this->showBackupHistoryModal = true;
+    }
+
+    public function closeBackupHistory(): void
+    {
+        $this->showBackupHistoryModal = false;
+        $this->historyConfigurationId = null;
     }
 
     public function save(): void
@@ -96,11 +111,15 @@ class InHouseBackupsManager extends Component
 
     public function render(): View
     {
+        $historyConfiguration = $this->historyConfigurationId ? InHouseBackupConfiguration::find($this->historyConfigurationId) : null;
+
         return view('livewire.in-house-backups-manager', ['systems' => SupportSystem::query()
             ->where('active', true)
             ->whereDoesntHave('inHouseBackupConfiguration')
             ->orderBy('sort_order')->orderBy('name')->get(), 'configurations' => InHouseBackupConfiguration::query()
             ->when($this->search !== '', fn ($q) => $q->where(fn ($q) => $q->where('system_name', 'like', '%'.$this->search.'%')->orWhere('server_name', 'like', '%'.$this->search.'%')->orWhere('database_type', 'like', '%'.$this->search.'%')))
-            ->latest()->get()]);
+            ->latest()->get(), 'historyConfiguration' => $historyConfiguration,
+            'recentBackups' => $historyConfiguration ? app(InHouseBackupStatusService::class)->recentBackups($historyConfiguration->backup_directory_name) : [],
+        ]);
     }
 }

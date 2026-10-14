@@ -34,8 +34,10 @@ class InHouseBackupProvisioningService
     private function createRemoteDirectory(InHouseBackupConfiguration $configuration): void
     {
         $user = (string) config('alis_backup.user');
-        $directory = rtrim((string) config('alis_backup.root'), '/').'/'.$configuration->backup_directory_name;
-        $command = sprintf('sudo install -d -o %s -g %s -m 750 %s', $this->escape($user), $this->escape($user), $this->escape($directory));
+        $root = rtrim((string) config('alis_backup.root'), '/');
+        $parentDirectory = $root.'/inhouse_systems';
+        $directory = $parentDirectory.'/'.$configuration->backup_directory_name;
+        $command = sprintf('sudo install -d -o %s -g %s -m 750 %s %s', $this->escape($user), $this->escape($user), $this->escape($parentDirectory), $this->escape($directory));
         $result = Process::timeout(30)->run(['ssh', '-p', (string) config('alis_backup.port', 22), '-o', 'BatchMode=yes', '-i', (string) config('alis_backup.ssh_key'), $user.'@'.config('alis_backup.server'), $command]);
         if ($result->failed()) throw new RuntimeException('The in-house backup directory could not be provisioned on the central backup server.');
     }
