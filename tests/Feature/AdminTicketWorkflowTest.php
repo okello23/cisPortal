@@ -123,4 +123,47 @@ class AdminTicketWorkflowTest extends TestCase
         $this->assertStringNotContainsString('Closed', $statusSelect);
         $this->assertStringNotContainsString('Reopened', $statusSelect);
     }
+
+    public function test_ticket_show_page_formats_turnaround_time_spanning_months_without_error(): void
+    {
+        $manager = User::query()->where('email', 'manager@cphl.go.ug')->firstOrFail();
+        $manager->forceFill([
+            'force_password_change' => false,
+            'password_changed_at' => now(),
+        ])->save();
+
+        $ticket = Ticket::query()->create([
+            'ticket_number' => 'CIS-WORKFLOW-003',
+            'system_id' => \App\Models\SupportSystem::query()->where('code', 'rds')->value('id'),
+            'designation_id' => \App\Models\Designation::query()->firstOrFail()->id,
+            'issue_started_at' => now()->subMonths(3)->toDateString(),
+            'full_name' => 'Workflow Reporter',
+            'phone' => '0700000097',
+            'email' => 'workflow3@example.com',
+            'lab_manager_name' => 'Manager',
+            'lab_manager_email' => 'labmanager3@example.com',
+            'region_id' => \App\Models\Region::query()->firstOrFail()->id,
+            'district_name' => 'Kyegegwa',
+            'facility_id' => \App\Models\Facility::query()->firstOrFail()->id,
+            'issue_type_id' => \App\Models\IssueType::query()->firstOrFail()->id,
+            'priority_level_id' => \App\Models\PriorityLevel::query()->firstOrFail()->id,
+            'description' => 'Long duration turnaround time test.',
+            'status_id' => TicketStatus::query()->where('code', 'in_progress')->value('id'),
+            'submission_review_status' => 'ACCEPTED',
+            'created_at' => now()->subMonths(3),
+        ]);
+
+        \App\Models\TicketStatusLog::query()->create([
+            'ticket_id' => $ticket->id,
+            'old_status_id' => TicketStatus::query()->where('code', 'new')->value('id'),
+            'new_status_id' => TicketStatus::query()->where('code', 'in_progress')->value('id'),
+            'changed_by' => $manager->id,
+            'created_at' => now()->subDays(5),
+        ]);
+
+        $response = $this->actingAs($manager)->get(route('admin.tickets.show', $ticket));
+
+        $response->assertOk();
+    }
 }
+

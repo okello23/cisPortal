@@ -21,7 +21,7 @@ use App\Support\TicketRecipientResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\CarbonInterval;
+use Carbon\CarbonInterval;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
