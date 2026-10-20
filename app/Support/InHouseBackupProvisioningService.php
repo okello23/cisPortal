@@ -25,21 +25,33 @@ class InHouseBackupProvisioningService
 
     private function ensureConfigured(): void
     {
-        foreach (['server', 'user', 'root', 'ssh_key'] as $key) {
+        foreach (['server', 'user', 'ssh_key'] as $key) {
             if (blank(config("alis_backup.{$key}"))) throw new RuntimeException('The central backup server is not fully configured.');
         }
-        if (! is_file((string) config('alis_backup.ssh_key'))) throw new RuntimeException('The central backup deployment SSH key could not be found.');
+        if (! is_file($this->resolveSshKey())) throw new RuntimeException('The central backup deployment SSH key could not be found.');
     }
 
     private function createRemoteDirectory(InHouseBackupConfiguration $configuration): void
     {
         $user = (string) config('alis_backup.user');
-        $root = rtrim((string) config('alis_backup.root'), '/');
+        $root = rtrim((string) config('alis_backup.in_house_root', '/backup'), '/');
         $parentDirectory = $root.'/inhouse_systems';
-        $directory = $parentDirectory.'/'.$configuration->backup_directory_name;
+        $directory = $configuration->backup_directory_path;
         $command = sprintf('sudo install -d -o %s -g %s -m 750 %s %s', $this->escape($user), $this->escape($user), $this->escape($parentDirectory), $this->escape($directory));
-        $result = Process::timeout(30)->run(['ssh', '-p', (string) config('alis_backup.port', 22), '-o', 'BatchMode=yes', '-i', (string) config('alis_backup.ssh_key'), $user.'@'.config('alis_backup.server'), $command]);
+        $result = Process::timeout(30)->run(['ssh', '-p', (string) config('alis_backup.port', 22), '-o', 'BatchMode=yes', '-i', $this->resolveSshKey(), $user.'@'.config('alis_backup.server'), $command]);
         if ($result->failed()) throw new RuntimeException('The in-house backup directory could not be provisioned on the central backup server.');
+    }
+
+    private function resolveSshKey(): string
+    {
+        $key = (string) config('alis_backup.ssh_key');
+        if (str_starts_with($key, '~/')) {
+            $home = getenv('HOME') ?: ($_SERVER['HOME'] ?? '');
+            if ($home) {
+                return $home.substr($key, 1);
+            }
+        }
+        return $key;
     }
 
     private function escape(string $value): string

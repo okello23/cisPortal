@@ -25,4 +25,9 @@ class InHouseBackupConfiguration extends Model
     {
         return $this->belongsTo(SupportSystem::class, 'system_id');
     }
+
+    public function getBackupDirectoryPathAttribute(): string
+    {
+        return rtrim((string) config('alis_backup.in_house_root', '/backup'), '/').'/inhouse_systems/'.$this->backup_directory_name;
+    }
 }

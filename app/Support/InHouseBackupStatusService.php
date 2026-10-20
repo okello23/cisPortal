@@ -11,7 +11,7 @@ class InHouseBackupStatusService
     public function recentBackups(string $directoryName, int $limit = 10): ?array
     {
         if (preg_match('/\A[a-zA-Z0-9_-]+\z/', $directoryName) !== 1 || ! $this->configured()) return null;
-        $directory = rtrim((string) config('alis_backup.root'), '/').'/inhouse_systems/'.$directoryName;
+        $directory = $this->directoryPath($directoryName);
         $command = 'find '.$this->escape($directory).' -maxdepth 1 -type f -name '.$this->escape('*.sql.gz').' -printf '.$this->escape("%T@\t%s\t%f\n");
         $result = Process::timeout(15)->run($this->sshCommand($command));
         if ($result->failed()) return null;
@@ -24,14 +24,35 @@ class InHouseBackupStatusService
             })->filter()->sortByDesc(fn (array $backup) => $backup['backed_up_at']->timestamp)->take($limit)->values()->all();
     }
 
+    public function directoryPath(string $directoryName): string
+    {
+        $root = rtrim((string) config('alis_backup.in_house_root', '/backup'), '/');
+        return $root.'/inhouse_systems/'.$directoryName;
+    }
+
     private function configured(): bool
     {
-        return filled(config('alis_backup.server')) && filled(config('alis_backup.user')) && filled(config('alis_backup.root')) && is_file((string) config('alis_backup.ssh_key'));
+        return filled(config('alis_backup.server')) 
+            && filled(config('alis_backup.user')) 
+            && filled(config('alis_backup.in_house_root', '/backup')) 
+            && is_file($this->resolveSshKey());
     }
 
     private function sshCommand(string $command): array
     {
-        return ['ssh', '-p', (string) config('alis_backup.port', 22), '-o', 'BatchMode=yes', '-i', (string) config('alis_backup.ssh_key'), config('alis_backup.user').'@'.config('alis_backup.server'), $command];
+        return ['ssh', '-p', (string) config('alis_backup.port', 22), '-o', 'BatchMode=yes', '-i', $this->resolveSshKey(), config('alis_backup.user').'@'.config('alis_backup.server'), $command];
+    }
+
+    private function resolveSshKey(): string
+    {
+        $key = (string) config('alis_backup.ssh_key');
+        if (str_starts_with($key, '~/')) {
+            $home = getenv('HOME') ?: ($_SERVER['HOME'] ?? '');
+            if ($home) {
+                return $home.substr($key, 1);
+            }
+        }
+        return $key;
     }
 
     private function escape(string $value): string
