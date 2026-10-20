@@ -21,6 +21,15 @@ class InHouseBackupServicesTest extends TestCase
         $this->assertSame('/backup/inhouse_systems/labspars', $configuration->backup_directory_path);
     }
 
+    public function test_in_house_root_does_not_inherit_backup_server_root_dumps(): void
+    {
+        putenv('BACKUP_SERVER_ROOT=/backup/dumps');
+        putenv('IN_HOUSE_BACKUP_ROOT');
+        $config = require config_path('alis_backup.php');
+
+        $this->assertSame('/backup', $config['in_house_root']);
+    }
+
     public function test_script_generator_uses_backup_inhouse_systems_directory_and_expected_structure(): void
     {
         config()->set('alis_backup.server', '10.200.0.160');
