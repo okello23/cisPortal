@@ -104,15 +104,22 @@ class InHouseBackupStatusService
 
     private function configured(): bool
     {
-        return filled(config('alis_backup.server')) 
-            && filled(config('alis_backup.user')) 
+        $server = config('alis_backup.in_house_server') ?: config('alis_backup.server');
+        $user = config('alis_backup.in_house_user') ?: config('alis_backup.user');
+
+        return filled($server) 
+            && filled($user) 
             && filled(config('alis_backup.in_house_root', '/backup')) 
             && is_file($this->resolveSshKey());
     }
 
     private function sshCommand(string $command): array
     {
-        return ['ssh', '-p', (string) config('alis_backup.port', 22), '-o', 'BatchMode=yes', '-i', $this->resolveSshKey(), config('alis_backup.user').'@'.config('alis_backup.server'), $command];
+        $server = (string) (config('alis_backup.in_house_server') ?: config('alis_backup.server'));
+        $port = (string) (config('alis_backup.in_house_port') ?: config('alis_backup.port', 22));
+        $user = (string) (config('alis_backup.in_house_user') ?: config('alis_backup.user'));
+
+        return ['ssh', '-p', $port, '-o', 'BatchMode=yes', '-i', $this->resolveSshKey(), $user.'@'.$server, $command];
     }
 
     private function resolveSshKey(): string

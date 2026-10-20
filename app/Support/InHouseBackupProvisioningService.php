@@ -25,20 +25,26 @@ class InHouseBackupProvisioningService
 
     private function ensureConfigured(): void
     {
-        foreach (['server', 'user', 'ssh_key'] as $key) {
-            if (blank(config("alis_backup.{$key}"))) throw new RuntimeException('The central backup server is not fully configured.');
+        $server = config('alis_backup.in_house_server') ?: config('alis_backup.server');
+        $user = config('alis_backup.in_house_user') ?: config('alis_backup.user');
+        $sshKey = config('alis_backup.ssh_key');
+
+        if (blank($server) || blank($user) || blank($sshKey)) {
+            throw new RuntimeException('The central backup server is not fully configured.');
         }
         if (! is_file($this->resolveSshKey())) throw new RuntimeException('The central backup deployment SSH key could not be found.');
     }
 
     private function createRemoteDirectory(InHouseBackupConfiguration $configuration): void
     {
-        $user = (string) config('alis_backup.user');
+        $server = (string) (config('alis_backup.in_house_server') ?: config('alis_backup.server'));
+        $port = (string) (config('alis_backup.in_house_port') ?: config('alis_backup.port', 22));
+        $user = (string) (config('alis_backup.in_house_user') ?: config('alis_backup.user'));
         $root = rtrim((string) config('alis_backup.in_house_root', '/backup'), '/');
         $parentDirectory = $root.'/inhouse_systems';
         $directory = $configuration->backup_directory_path;
         $command = sprintf('sudo install -d -o %s -g %s -m 750 %s %s', $this->escape($user), $this->escape($user), $this->escape($parentDirectory), $this->escape($directory));
-        $result = Process::timeout(30)->run(['ssh', '-p', (string) config('alis_backup.port', 22), '-o', 'BatchMode=yes', '-i', $this->resolveSshKey(), $user.'@'.config('alis_backup.server'), $command]);
+        $result = Process::timeout(30)->run(['ssh', '-p', $port, '-o', 'BatchMode=yes', '-i', $this->resolveSshKey(), $user.'@'.$server, $command]);
         if ($result->failed()) throw new RuntimeException('The in-house backup directory could not be provisioned on the central backup server.');
     }
 

@@ -30,6 +30,25 @@ class InHouseBackupServicesTest extends TestCase
         $this->assertSame('/backup', $config['in_house_root']);
     }
 
+    public function test_in_house_backup_defaults_to_specified_ip_user_and_port(): void
+    {
+        $configuration = new InHouseBackupConfiguration([
+            'system_name' => 'VL LIMS',
+            'database_type' => 'mysql',
+            'database_name' => 'vl_lims',
+            'database_username' => 'vl_user',
+            'database_password' => 'vl8910',
+            'backup_directory_name' => 'vllims',
+        ]);
+
+        $script = (new InHouseBackupScriptGenerator())->render($configuration);
+
+        $this->assertStringContainsString("REMOTE_SERVER='10.200.0.160'", $script);
+        $this->assertStringContainsString("REMOTE_PORT='865'", $script);
+        $this->assertStringContainsString("REMOTE_USER='reverse'", $script);
+        $this->assertStringContainsString("REMOTE_DIRECTORY='/backup/inhouse_systems/vllims'", $script);
+    }
+
     public function test_script_generator_uses_backup_inhouse_systems_directory_and_expected_structure(): void
     {
         config()->set('alis_backup.server', '10.200.0.160');

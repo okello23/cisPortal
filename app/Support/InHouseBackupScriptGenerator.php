@@ -20,9 +20,9 @@ class InHouseBackupScriptGenerator
             default => 'MySQL',
         };
 
-        $backupServer = (string) (config('alis_backup.facility_offsite_server_ip') ?: config('alis_backup.server'));
-        $backupPort = (string) config('alis_backup.port', 22);
-        $backupUser = (string) config('alis_backup.user', 'backupuser');
+        $backupServer = (string) (config('alis_backup.in_house_server') ?: config('alis_backup.facility_offsite_server_ip') ?: config('alis_backup.server'));
+        $backupPort = (string) (config('alis_backup.in_house_port') ?: config('alis_backup.port', 22));
+        $backupUser = (string) (config('alis_backup.in_house_user') ?: config('alis_backup.user'));
         $remoteDirectory = $configuration->backup_directory_path;
 
         $dbName = $this->escape($configuration->database_name);
