@@ -112,14 +112,19 @@ class InHouseBackupsManager extends Component
     public function render(): View
     {
         $historyConfiguration = $this->historyConfigurationId ? InHouseBackupConfiguration::find($this->historyConfigurationId) : null;
+        $backupStatus = $historyConfiguration ? app(InHouseBackupStatusService::class)->checkStatus($historyConfiguration->backup_directory_name) : null;
 
-        return view('livewire.in-house-backups-manager', ['systems' => SupportSystem::query()
-            ->where('active', true)
-            ->whereDoesntHave('inHouseBackupConfiguration')
-            ->orderBy('sort_order')->orderBy('name')->get(), 'configurations' => InHouseBackupConfiguration::query()
-            ->when($this->search !== '', fn ($q) => $q->where(fn ($q) => $q->where('system_name', 'like', '%'.$this->search.'%')->orWhere('server_name', 'like', '%'.$this->search.'%')->orWhere('database_type', 'like', '%'.$this->search.'%')))
-            ->latest()->get(), 'historyConfiguration' => $historyConfiguration,
-            'recentBackups' => $historyConfiguration ? app(InHouseBackupStatusService::class)->recentBackups($historyConfiguration->backup_directory_name) : [],
+        return view('livewire.in-house-backups-manager', [
+            'systems' => SupportSystem::query()
+                ->where('active', true)
+                ->whereDoesntHave('inHouseBackupConfiguration')
+                ->orderBy('sort_order')->orderBy('name')->get(),
+            'configurations' => InHouseBackupConfiguration::query()
+                ->when($this->search !== '', fn ($q) => $q->where(fn ($q) => $q->where('system_name', 'like', '%'.$this->search.'%')->orWhere('server_name', 'like', '%'.$this->search.'%')->orWhere('database_type', 'like', '%'.$this->search.'%')))
+                ->latest()->get(),
+            'historyConfiguration' => $historyConfiguration,
+            'backupStatus' => $backupStatus,
+            'recentBackups' => $backupStatus && $backupStatus['status'] === 'ok' ? $backupStatus['backups'] : ($backupStatus && $backupStatus['status'] === 'empty' ? [] : null),
         ]);
     }
 }

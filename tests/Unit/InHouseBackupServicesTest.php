@@ -113,6 +113,47 @@ class InHouseBackupServicesTest extends TestCase
         });
     }
 
+    public function test_status_service_detects_permission_denied_on_remote_directory(): void
+    {
+        config()->set('alis_backup.server', '10.200.0.10');
+        config()->set('alis_backup.user', 'backupuser');
+        config()->set('alis_backup.port', 22);
+        config()->set('alis_backup.in_house_root', '/backup');
+        config()->set('alis_backup.ssh_key', __FILE__);
+
+        Process::fake([
+            '*' => Process::result('', "find: ‘/backup/inhouse_systems/labspars’: Permission denied\n", 1),
+        ]);
+
+        $statusService = new InHouseBackupStatusService();
+        $status = $statusService->checkStatus('labspars');
+
+        $this->assertSame('permission_denied', $status['status']);
+        $this->assertStringContainsString('Permission denied', $status['message']);
+        $this->assertSame([], $status['backups']);
+
+        $this->assertNull($statusService->recentBackups('labspars'));
+    }
+
+    public function test_status_service_detects_ssh_auth_permission_denied(): void
+    {
+        config()->set('alis_backup.server', '10.200.0.10');
+        config()->set('alis_backup.user', 'backupuser');
+        config()->set('alis_backup.port', 22);
+        config()->set('alis_backup.in_house_root', '/backup');
+        config()->set('alis_backup.ssh_key', __FILE__);
+
+        Process::fake([
+            '*' => Process::result('', "backupuser@10.200.0.10: Permission denied (publickey).\n", 255),
+        ]);
+
+        $statusService = new InHouseBackupStatusService();
+        $status = $statusService->checkStatus('labspars');
+
+        $this->assertSame('permission_denied', $status['status']);
+        $this->assertStringContainsString('Permission denied (publickey)', $status['message']);
+    }
+
     public function test_provisioning_service_provisions_in_backup_inhouse_systems(): void
     {
         config()->set('alis_backup.server', '10.200.0.10');

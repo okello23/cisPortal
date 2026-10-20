@@ -126,4 +126,52 @@ class InHouseBackupsManagerTest extends TestCase
             return str_contains($command, "find '/backup/inhouse_systems/labspars'");
         });
     }
+
+    public function test_shows_permission_denied_in_modal_when_permission_error_occurs(): void
+    {
+        $user = User::factory()->create([
+            'role' => User::ROLE_ICT_ADMIN,
+            'active' => true,
+        ]);
+
+        config()->set('alis_backup.server', '10.200.0.10');
+        config()->set('alis_backup.user', 'backupuser');
+        config()->set('alis_backup.port', 22);
+        config()->set('alis_backup.in_house_root', '/backup');
+        config()->set('alis_backup.ssh_key', __FILE__);
+
+        Process::fake([
+            '*' => Process::result(
+                '',
+                "find: ‘/backup/inhouse_systems/labspars’: Permission denied\n",
+                1
+            ),
+        ]);
+
+        $system = SupportSystem::query()->create([
+            'name' => 'LabSpars',
+            'code' => 'labspars',
+            'active' => true,
+        ]);
+
+        $configuration = InHouseBackupConfiguration::query()->create([
+            'system_id' => $system->id,
+            'system_name' => 'LabSpars',
+            'server_name' => '10.200.254.228',
+            'database_type' => 'mysql',
+            'database_name' => 'labspars',
+            'database_username' => 'root',
+            'database_password' => 'secret',
+            'backup_directory_name' => 'labspars',
+            'status' => 'active',
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(InHouseBackupsManager::class)
+            ->call('showBackupHistory', $configuration->id)
+            ->assertSee('Permission Denied')
+            ->assertSee('find: ‘/backup/inhouse_systems/labspars’: Permission denied')
+            ->assertDontSee('No database dumps found yet.')
+            ->assertDontSee('Backup files are currently unavailable.');
+    }
 }
