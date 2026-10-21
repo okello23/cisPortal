@@ -9,12 +9,14 @@
        
     </div>
 
-    <div class="d-flex gap-2 flex-wrap mb-4">
-        <a href="{{ route('dashboard') }}" class="btn rounded-pill px-4 {{ $activeTab === 'overview' ? 'btn-dark' : 'btn-outline-dark' }}">Overview</a>
-        <a href="{{ route('dashboard', ['tab' => 'performance']) }}" class="btn rounded-pill px-4 {{ $activeTab === 'performance' ? 'btn-warning' : 'btn-outline-warning' }}">Support Team Performance</a>
+    <div class="d-flex align-items-center gap-2 flex-wrap mb-4">
+        <a href="{{ route('dashboard') }}" class="btn rounded-pill px-4 {{ $activeTab === 'overview' && request('workspace') !== 'support' ? 'btn-success' : 'btn-outline-dark' }}">Overview</a>
+        <a href="{{ route('dashboard', ['tab' => 'performance']) }}" class="btn rounded-pill px-4 {{ $activeTab === 'performance' ? 'btn-success' : 'btn-outline-dark' }}">Support Team Performance</a>
         @if ($canViewManagerDashboard)
-            <a href="{{ route('dashboard', ['tab' => 'manager']) }}" class="btn rounded-pill px-4 {{ $activeTab === 'manager' ? 'btn-success' : 'btn-outline-success' }}">Manager Dashboard</a>
+            <a href="{{ route('dashboard', ['tab' => 'manager']) }}" class="btn rounded-pill px-4 {{ $activeTab === 'manager' ? 'btn-success' : 'btn-outline-dark' }}">Manager Dashboard</a>
         @endif
+
+        @include('partials.workspace-tabs')
     </div>
 
     @if ($activeTab === 'overview')
@@ -87,11 +89,11 @@
             </div>
             <div class="col-lg-4">
                 <div class="content-card bg-white p-4">
-                    @if (auth()->user()->role === 'ict_admin')
+                    @if (auth()->user()->hasAnyRole([\App\Models\User::ROLE_ICT_ADMIN]))
                         <div class="mb-4">
                             <h2 class="h5">Administration</h2>
-                            <a href="{{ \Illuminate\Support\Facades\Route::has('admin.users.index') ? route('admin.users.index') : url('/users') }}" class="btn btn-outline-dark rounded-4 w-100 text-start">Manage ICT Users</a>
-                            <a href="{{ route('admin.nutrition-users.index') }}" class="btn btn-outline-success rounded-4 w-100 text-start mt-2">Manage Nutrition Team Users</a>
+                            <a href="{{ route('admin.users.index') }}" class="btn btn-outline-dark rounded-4 w-100 text-start">Manage Users</a>
+                            <a href="{{ route('admin.roles.index') }}" class="btn btn-outline-dark rounded-4 w-100 text-start mt-2">Manage Roles</a>
                         </div>
                     @endif
                     <h2 class="h5">Manager Lists</h2>

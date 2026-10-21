@@ -17,7 +17,9 @@ use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\PublicNutritionTaskController;
 use App\Http\Controllers\NutritionTaskController;
 use App\Http\Controllers\NutritionUserController;
+use App\Http\Controllers\RoleManagementController;
 use App\Http\Middleware\EnsurePasswordIsCurrent;
+use App\Http\Middleware\EnsureWorkspaceAccess;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [PublicDashboardController::class, 'home'])->name('home');
@@ -51,7 +53,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/password/change', [PasswordController::class, 'editCurrentPassword'])->name('password.change.edit');
     Route::put('/password/change', [PasswordController::class, 'updateCurrentPassword'])->name('password.change.update');
 
-    Route::middleware(EnsurePasswordIsCurrent::class)->group(function () {
+    Route::middleware([EnsurePasswordIsCurrent::class, EnsureWorkspaceAccess::class])->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
         Route::get('/dashboard/support-performance/export/{format}', [AdminDashboardController::class, 'exportPerformance'])->name('dashboard.support-performance.export');
         Route::get('/tickets', [AdminTicketController::class, 'index'])->name('admin.tickets.index');
@@ -69,6 +71,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/anti-spam/blocks', [PublicSubmissionAdminController::class, 'storeBlock'])->name('admin.anti-spam.blocks.store');
         Route::delete('/anti-spam/blocks/{block}', [PublicSubmissionAdminController::class, 'destroyBlock'])->name('admin.anti-spam.blocks.destroy');
         Route::get('/users', [UserManagementController::class, 'index'])->name('admin.users.index');
+        Route::get('/roles', [RoleManagementController::class, 'index'])->name('admin.roles.index');
+        Route::post('/roles', [RoleManagementController::class, 'store'])->name('admin.roles.store');
+        Route::put('/roles/{role}', [RoleManagementController::class, 'update'])->name('admin.roles.update');
+        Route::delete('/roles/{role}', [RoleManagementController::class, 'destroy'])->name('admin.roles.destroy');
         Route::post('/users', [UserManagementController::class, 'store'])->name('admin.users.store');
         Route::put('/users/{user}', [UserManagementController::class, 'update'])->name('admin.users.update');
         Route::get('/nutrition-users', [NutritionUserController::class, 'index'])->name('admin.nutrition-users.index');

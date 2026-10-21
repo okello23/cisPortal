@@ -106,7 +106,7 @@ class ManagerDashboardService
             'systems' => SupportSystem::query()->where('active', true)->orderBy('sort_order')->orderBy('name')->get(['id', 'name']),
             'support_staff' => User::query()
                 ->where('active', true)
-                ->where('role', User::ROLE_ICT_SUPPORT_STAFF)
+                ->withAccessRoles([User::ROLE_ICT_SUPPORT_STAFF])
                 ->orderBy('name')
                 ->get(['id', 'name']),
             'issue_types' => IssueType::query()->where('active', true)->orderBy('sort_order')->orderBy('name')->get(['id', 'name']),

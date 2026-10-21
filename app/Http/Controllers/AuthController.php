@@ -35,7 +35,7 @@ class AuthController extends Controller
                     : 'Please change the temporary password that was sent to your email before continuing.');
         }
 
-        return redirect()->intended(route('dashboard'));
+        return redirect()->intended(route($request->user()->dashboardRoute()));
     }
 
     public function destroy(Request $request): RedirectResponse
