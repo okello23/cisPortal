@@ -4,8 +4,8 @@ namespace App\Support;
 
 use App\Models\Ticket;
 use App\Models\TicketComment;
-use App\Models\TicketStatusLog;
 use App\Models\TicketStatus;
+use App\Models\TicketStatusLog;
 use App\Models\User;
 use Illuminate\Support\Collection;
 
@@ -95,7 +95,7 @@ class SupportPerformanceService
             return [
                 'staff_id' => $staffMember->id,
                 'staff_name' => $staffMember->name,
-                'role' => User::roleLabels()[$staffMember->role] ?? $staffMember->role,
+                'role' => $staffMember->roleLabel(),
                 'tickets_assigned' => $assignedTickets->count(),
                 'tickets_resolved' => $resolvedTickets->count(),
                 'tickets_closed' => $closedTickets->count(),
@@ -176,7 +176,7 @@ class SupportPerformanceService
         if ($this->isManager($viewer)) {
             return User::query()
                 ->where('active', true)
-                ->where('role', User::ROLE_ICT_SUPPORT_STAFF)
+                ->withAccessRoles([User::ROLE_ICT_SUPPORT_STAFF])
                 ->when(
                     ! empty($filters['staff_id']),
                     fn ($query) => $query->whereKey((int) $filters['staff_id'])
@@ -199,7 +199,7 @@ class SupportPerformanceService
 
         return User::query()
             ->where('active', true)
-            ->where('role', User::ROLE_ICT_SUPPORT_STAFF)
+            ->withAccessRoles([User::ROLE_ICT_SUPPORT_STAFF])
             ->orderBy('name')
             ->get(['id', 'name']);
     }

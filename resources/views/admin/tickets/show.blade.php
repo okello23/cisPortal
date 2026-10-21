@@ -289,7 +289,7 @@
                         <select name="assigned_to" class="form-select">
                             <option value="">Unassigned</option>
                             @foreach ($staff as $person)
-                                <option value="{{ $person->id }}" @selected($ticket->assigned_to == $person->id)>{{ $person->name }} ({{ \App\Models\User::roleLabels()[$person->role] ?? $person->role }})</option>
+                                <option value="{{ $person->id }}" @selected($ticket->assigned_to == $person->id)>{{ $person->name }} ({{ $person->roleLabel() }})</option>
                             @endforeach
                         </select>
                     </div>

@@ -35,7 +35,7 @@ class TicketRecipientResolver
 
         return User::query()
             ->where('active', true)
-            ->whereIn('role', $roles)
+            ->withAccessRoles($roles)
             ->whereNotNull('email')
             ->when($excluded !== [], fn ($query) => $query->whereNotIn('email', $excluded))
             ->pluck('email')

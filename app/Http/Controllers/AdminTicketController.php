@@ -572,7 +572,7 @@ class AdminTicketController extends Controller
         return User::query()
             ->where('active', true)
             ->where(function ($query) use ($roles, $ticket) {
-                $query->whereIn('role', $roles);
+                $query->withAccessRoles($roles);
 
                 if ($ticket->assigned_to) {
                     $query->orWhere('id', $ticket->assigned_to);
@@ -580,8 +580,8 @@ class AdminTicketController extends Controller
             })
             ->get()
             ->sort(function (User $left, User $right) use ($rolePriority) {
-                $leftPriority = $rolePriority[$left->role] ?? 99;
-                $rightPriority = $rolePriority[$right->role] ?? 99;
+                $leftPriority = min(array_map(fn ($role) => $left->hasAnyRole([$role]) ? $rolePriority[$role] : 99, array_keys($rolePriority)));
+                $rightPriority = min(array_map(fn ($role) => $right->hasAnyRole([$role]) ? $rolePriority[$role] : 99, array_keys($rolePriority)));
 
                 if ($leftPriority !== $rightPriority) {
                     return $leftPriority <=> $rightPriority;

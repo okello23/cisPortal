@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\AlisRemoteBackupKeyUpdateReason;
 use App\Models\ClosureReason;
-use App\Models\Designation;
 use App\Models\Department;
+use App\Models\Designation;
 use App\Models\Facility;
 use App\Models\IssueType;
 use App\Models\PriorityLevel;
@@ -14,12 +14,12 @@ use App\Models\ResolutionCategory;
 use App\Models\SupportModule;
 use App\Models\SupportSystem;
 use App\Models\TicketStatus;
+use App\Models\User;
 use App\Support\AuditService;
 use App\Support\FacilitySyncService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -46,9 +46,7 @@ class ManagerListController extends Controller
     public function __construct(
         private readonly AuditService $auditService,
         private readonly FacilitySyncService $facilitySyncService,
-    )
-    {
-    }
+    ) {}
 
     public function index(string $list): View
     {
@@ -279,11 +277,11 @@ class ManagerListController extends Controller
             return [];
         }
 
-        if ($user->role === User::ROLE_ICT_ADMIN) {
+        if ($user->hasAnyRole([User::ROLE_ICT_ADMIN])) {
             return self::LIST_DEFINITIONS;
         }
 
-        if ($user->role === User::ROLE_ICT_SUPERVISOR) {
+        if ($user->hasAnyRole([User::ROLE_ICT_SUPERVISOR])) {
             return array_intersect_key(self::LIST_DEFINITIONS, array_flip([
                 'alis-key-update-reasons',
                 'systems',

@@ -6,6 +6,7 @@ use App\Models\Ticket;
 use App\Models\User;
 use App\Support\ManagerDashboardService;
 use App\Support\SupportPerformanceService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
@@ -16,13 +17,16 @@ class AdminDashboardController extends Controller
     public function __construct(
         private readonly SupportPerformanceService $supportPerformanceService,
         private readonly ManagerDashboardService $managerDashboardService,
-    )
-    {
-    }
+    ) {}
 
-    public function index(Request $request): View
+    public function index(Request $request): View|RedirectResponse
     {
         $user = Auth::user();
+        if (! $user->hasGlobalRole() && $user->isNutritionUser()) {
+            return to_route('nutrition-tasks.dashboard');
+        }
+        abort_unless($user->hasGlobalRole(), 403, 'No dashboard role has been assigned to your account.');
+
         $canViewManagerDashboard = $user->hasAnyRole([User::ROLE_ICT_ADMIN, User::ROLE_ICT_MANAGER]);
         $performanceFilters = [
             'staff_id' => $request->integer('performance_staff_id') ?: null,
@@ -55,7 +59,7 @@ class AdminDashboardController extends Controller
             'staff' => User::query()->where('active', true)->orderBy('name')->get(),
             'assignableSupportStaff' => User::query()
                 ->where('active', true)
-                ->where('role', User::ROLE_ICT_SUPPORT_STAFF)
+                ->withAccessRoles([User::ROLE_ICT_SUPPORT_STAFF])
                 ->orderBy('name')
                 ->get(),
             'metrics' => [
@@ -75,6 +79,7 @@ class AdminDashboardController extends Controller
     public function exportPerformance(Request $request, string $format): Response
     {
         $user = Auth::user();
+        abort_unless($user->hasGlobalRole(), 403);
         $dataset = $this->supportPerformanceService->buildForUser($user, [
             'staff_id' => $request->integer('performance_staff_id') ?: null,
         ]);
@@ -199,7 +204,7 @@ class AdminDashboardController extends Controller
                 $content .= '('.$this->escapePdfText($line).") Tj\n";
             }
 
-            $content .= "ET";
+            $content .= 'ET';
 
             $contentObjectIds[$index] = $objectId++;
             $pageObjectIds[$index] = $objectId++;
