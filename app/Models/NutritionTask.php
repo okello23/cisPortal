@@ -4,10 +4,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class NutritionTask extends Model
 {
+    protected static function booted(): void
+    {
+        static::created(function (NutritionTask $task) {
+            if ($task->assigned_to && ! $task->assignees()->exists()) {
+                $task->assignees()->attach($task->assigned_to);
+            }
+        });
+    }
+
     public const TYPES = [
         'visualisation' => 'Visualisation',
         'dataset' => 'Dataset',
@@ -43,6 +53,16 @@ class NutritionTask extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(NutritionTeamUser::class, 'assigned_to');
+    }
+
+    public function assignees(): BelongsToMany
+    {
+        return $this->belongsToMany(NutritionTeamUser::class, 'nutrition_task_assignees')->withTimestamps();
+    }
+
+    public function subtasks(): HasMany
+    {
+        return $this->hasMany(NutritionSubtask::class);
     }
 
     public function assigner(): BelongsTo

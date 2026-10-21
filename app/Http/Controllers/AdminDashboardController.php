@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Support\ManagerDashboardService;
 use App\Support\SupportPerformanceService;
 use Illuminate\Http\Request;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
@@ -21,12 +20,9 @@ class AdminDashboardController extends Controller
     {
     }
 
-    public function index(Request $request): View|RedirectResponse
+    public function index(Request $request): View
     {
         $user = Auth::user();
-        if ($user->isNutritionUser()) {
-            return redirect()->route('nutrition-tasks.dashboard');
-        }
         $canViewManagerDashboard = $user->hasAnyRole([User::ROLE_ICT_ADMIN, User::ROLE_ICT_MANAGER]);
         $performanceFilters = [
             'staff_id' => $request->integer('performance_staff_id') ?: null,

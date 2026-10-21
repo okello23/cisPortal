@@ -1,5 +1,5 @@
 <h2>A Nutrition task has been assigned to you</h2>
-<p>Hello {{ $task->assignee->user->name }},</p>
+<p>Hello {{ $recipient?->user?->name ?? 'Team member' }},</p>
 <p><strong>Task:</strong> {{ $task->task_number }}</p>
 <p><strong>Request type:</strong> {{ $task->requestTypeLabel() }}</p>
 <p><strong>Priority:</strong> {{ \App\Models\NutritionTask::PRIORITIES[$task->priority] ?? ucfirst($task->priority) }}</p>
