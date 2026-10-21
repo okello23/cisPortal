@@ -78,6 +78,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/nutrition-tasks', [NutritionTaskController::class, 'index'])->name('nutrition-tasks.index');
         Route::get('/nutrition-tasks/{nutritionTask}', [NutritionTaskController::class, 'show'])->name('nutrition-tasks.show');
         Route::put('/nutrition-tasks/{nutritionTask}', [NutritionTaskController::class, 'update'])->name('nutrition-tasks.update');
+        Route::post('/nutrition-tasks/{nutritionTask}/subtasks', [NutritionTaskController::class, 'storeSubtask'])->name('nutrition-subtasks.store');
+        Route::put('/nutrition-tasks/{nutritionTask}/subtasks/{nutritionSubtask}', [NutritionTaskController::class, 'updateSubtask'])->name('nutrition-subtasks.update');
         Route::get('/infrastructure/alis-remote-backup-keys', [AlisRemoteBackupKeyController::class, 'index'])->name('infrastructure.alis-remote-backup-keys.index');
         Route::get('/infrastructure/alis-remote-backup-keys/{configuration}/download-script', [AlisRemoteBackupKeyController::class, 'downloadScript'])->name('infrastructure.alis-remote-backup-keys.download-script');
         Route::get('/infrastructure/alis-remote-backup-keys/{configuration}/backups/{filename}', [AlisRemoteBackupKeyController::class, 'downloadBackup'])

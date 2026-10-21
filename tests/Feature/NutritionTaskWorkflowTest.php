@@ -74,7 +74,7 @@ class NutritionTaskWorkflowTest extends TestCase
 
         $response = $this->actingAs($admin)->put(route('nutrition-tasks.update', $task), [
             'status' => 'not_started',
-            'assigned_to' => $profile->id,
+            'assignee_ids' => [$profile->id],
             'due_date' => today()->addWeek()->toDateString(),
             'progress_notes' => 'Initial assignment.',
         ]);
@@ -82,6 +82,63 @@ class NutritionTaskWorkflowTest extends TestCase
         $response->assertRedirect();
         $this->assertDatabaseHas('nutrition_tasks', ['id' => $task->id, 'assigned_to' => $profile->id]);
         Mail::assertSent(NutritionTaskAssignedMail::class, fn ($mail) => $mail->hasTo('member@example.com'));
+    }
+
+    public function test_admin_can_assign_main_task_to_multiple_people(): void
+    {
+        Mail::fake();
+        $admin = $this->user(User::ROLE_TASK_ADMIN, 'admin@example.com');
+        $admin->nutritionProfile()->create(['designation' => 'Lead']);
+        $first = $this->user(User::ROLE_NUTRITION_USER, 'first@example.com')->nutritionProfile()->create(['designation' => 'Analyst']);
+        $second = $this->user(User::ROLE_NUTRITION_USER, 'second@example.com')->nutritionProfile()->create(['designation' => 'Officer']);
+        $task = NutritionTask::query()->create($this->taskPayload());
+
+        $this->actingAs($admin)->put(route('nutrition-tasks.update', $task), [
+            'status' => 'not_started', 'assignee_ids' => [$first->id, $second->id],
+        ])->assertRedirect();
+
+        $this->assertCount(2, $task->fresh()->assignees);
+        Mail::assertSent(NutritionTaskAssignedMail::class, 2);
+        $this->actingAs($admin)->get(route('nutrition-tasks.dashboard'))->assertOk()->assertSee($first->user->name)->assertSee($second->user->name);
+        $this->actingAs($admin)->get(route('nutrition-tasks.index'))->assertOk()->assertSee($first->user->name)->assertSee($second->user->name);
+    }
+
+    public function test_subtask_can_have_independent_assignees_or_inherit_main_assignees(): void
+    {
+        Mail::fake();
+        $admin = $this->user(User::ROLE_TASK_ADMIN, 'admin@example.com');
+        $admin->nutritionProfile()->create(['designation' => 'Lead']);
+        $main = $this->user(User::ROLE_NUTRITION_USER, 'main@example.com')->nutritionProfile()->create(['designation' => 'Analyst']);
+        $specialist = $this->user(User::ROLE_NUTRITION_USER, 'specialist@example.com')->nutritionProfile()->create(['designation' => 'Officer']);
+        $task = NutritionTask::query()->create([...$this->taskPayload(), 'assigned_to' => $main->id]);
+
+        $this->actingAs($admin)->post(route('nutrition-subtasks.store', $task), [
+            'title' => 'Validate indicators', 'assignee_ids' => [$specialist->id],
+        ])->assertRedirect();
+        $this->actingAs($admin)->post(route('nutrition-subtasks.store', $task), ['title' => 'Prepare summary'])->assertRedirect();
+
+        $this->assertTrue($task->subtasks()->first()->effectiveAssignees()->contains('id', $specialist->id));
+        $this->assertTrue($task->subtasks()->latest('id')->first()->effectiveAssignees()->contains('id', $main->id));
+        Mail::assertSent(\App\Mail\NutritionSubtaskAssignedMail::class, fn ($mail) => $mail->hasTo('specialist@example.com'));
+        Mail::assertSent(\App\Mail\NutritionSubtaskAssignedMail::class, fn ($mail) => $mail->hasTo('main@example.com'));
+
+        $assignedSubtask = $task->subtasks()->oldest('id')->first();
+        $this->actingAs($specialist->user)->get(route('nutrition-tasks.show', $task))->assertOk();
+        $this->actingAs($specialist->user)->put(route('nutrition-subtasks.update', [$task, $assignedSubtask]), ['status' => 'completed'])->assertRedirect();
+        $this->assertSame('completed', $assignedSubtask->fresh()->status);
+        $this->actingAs($specialist->user)->put(route('nutrition-tasks.update', $task), ['status' => 'completed'])->assertForbidden();
+    }
+
+    public function test_main_task_cannot_be_completed_until_subtasks_are_complete(): void
+    {
+        $admin = $this->user(User::ROLE_TASK_ADMIN, 'admin@example.com');
+        $admin->nutritionProfile()->create(['designation' => 'Lead']);
+        $task = NutritionTask::query()->create($this->taskPayload());
+        $task->subtasks()->create(['title' => 'Pending dependency', 'created_by' => $admin->id]);
+
+        $this->actingAs($admin)->put(route('nutrition-tasks.update', $task), ['status' => 'completed'])
+            ->assertSessionHasErrors('status');
+        $this->assertSame('not_started', $task->fresh()->status);
     }
 
     public function test_member_sees_only_their_tasks_and_cannot_open_another_members_task(): void

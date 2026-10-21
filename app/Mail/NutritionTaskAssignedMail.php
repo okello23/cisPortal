@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\NutritionTask;
+use App\Models\NutritionTeamUser;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -13,7 +14,7 @@ class NutritionTaskAssignedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public NutritionTask $task) {}
+    public function __construct(public NutritionTask $task, public ?NutritionTeamUser $recipient = null) {}
 
     public function envelope(): Envelope
     {
