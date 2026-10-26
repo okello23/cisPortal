@@ -3,14 +3,15 @@
 @section('content')
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div><p class="text-uppercase text-muted fw-semibold small mb-1">Nutrition Task Tracker</p><h1 class="h2 mb-0">Welcome, {{ auth()->user()->name }}</h1></div>
-    <div class="d-flex gap-2"><a href="{{ route('nutrition-tasks.index') }}" class="btn btn-cis-orange rounded-pill px-4">View Tasks</a>@if($isTaskAdmin)<a href="{{ route('admin.nutrition-users.index') }}" class="btn btn-outline-dark rounded-pill px-4">Manage Nutrition Team Users</a>@endif</div>
+    <div class="d-flex gap-2"><a href="{{ route('nutrition-tasks.index') }}" class="btn btn-cis-orange rounded-pill px-4">View Tasks</a>@if($isTaskAdmin)<a href="{{ route('admin.users.index', ['category' => 'micronutrient']) }}" class="btn btn-outline-dark rounded-pill px-4">Manage Nutrition Team Users</a>@endif</div>
 </div>
-<div class="d-flex gap-2 flex-wrap mb-4">
-    <a href="{{ route('nutrition-tasks.dashboard') }}" class="btn rounded-pill px-4 {{ $activeTab === 'overview' ? 'btn-dark' : 'btn-outline-dark' }}">Overview</a>
+<div class="d-flex align-items-center gap-2 flex-wrap mb-4">
+    <a href="{{ route('nutrition-tasks.dashboard') }}" class="btn rounded-pill px-4 {{ $activeTab === 'overview' && request('workspace') !== 'micronutrient' ? 'btn-success' : 'btn-outline-dark' }}">Overview</a>
     @if($isTaskAdmin)
-        <a href="{{ route('nutrition-tasks.dashboard', ['tab'=>'performance']) }}" class="btn rounded-pill px-4 {{ $activeTab === 'performance' ? 'btn-warning' : 'btn-outline-warning' }}">Support Team Performance</a>
-        <a href="{{ route('nutrition-tasks.dashboard', ['tab'=>'manager']) }}" class="btn rounded-pill px-4 {{ $activeTab === 'manager' ? 'btn-success' : 'btn-outline-success' }}">Manager Dashboard</a>
+        <a href="{{ route('nutrition-tasks.dashboard', ['tab'=>'performance']) }}" class="btn rounded-pill px-4 {{ $activeTab === 'performance' ? 'btn-success' : 'btn-outline-dark' }}">Support Team Performance</a>
+        <a href="{{ route('nutrition-tasks.dashboard', ['tab'=>'manager']) }}" class="btn rounded-pill px-4 {{ $activeTab === 'manager' ? 'btn-success' : 'btn-outline-dark' }}">Manager Dashboard</a>
     @endif
+    @include('partials.workspace-tabs')
 </div>
 
 @if($activeTab === 'overview')
