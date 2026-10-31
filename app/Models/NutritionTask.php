@@ -39,7 +39,7 @@ class NutritionTask extends Model
         'requestor_name', 'requestor_email', 'requestor_phone', 'request_type',
         'other_request_type', 'description', 'requested_assignee_email',
         'requested_assignee_name', 'priority', 'status', 'assigned_to', 'assigned_by',
-        'due_date', 'assigned_at', 'completed_at', 'last_reminder_sent_at', 'progress_notes',
+        'due_date', 'assigned_at', 'completed_at', 'last_reminder_sent_at', 'progress_notes', 'theme_id',
     ];
 
     protected $casts = [
@@ -53,6 +53,11 @@ class NutritionTask extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(NutritionTeamUser::class, 'assigned_to');
+    }
+
+    public function theme(): BelongsTo
+    {
+        return $this->belongsTo(NutritionTheme::class, 'theme_id');
     }
 
     public function assignees(): BelongsToMany

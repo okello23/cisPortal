@@ -7,14 +7,18 @@ use App\Mail\NutritionTaskAssignedMail;
 use App\Models\NutritionSubtask;
 use App\Models\NutritionTask;
 use App\Models\NutritionTeamUser;
+use App\Models\NutritionTheme;
 use App\Models\User;
+use App\Support\NutritionThemeReport;
 use App\Support\OutboundMail;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Exists;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class NutritionTaskController extends Controller
@@ -31,24 +35,44 @@ class NutritionTaskController extends Controller
             $this->scopeForMember($base, $user->nutritionProfile?->id ?? 0);
         }
         $tab = $request->string('tab')->toString();
-        $activeTab = $isTaskAdmin && in_array($tab, ['performance', 'manager'], true) ? $tab : 'overview';
+        $tab = $tab === 'performance' ? 'themes' : $tab;
+        $activeTab = $isTaskAdmin && in_array($tab, ['themes', 'manager'], true) ? $tab : 'overview';
         $metrics = collect(NutritionTask::STATUSES)->mapWithKeys(fn ($label, $status) => [$status => (clone $base)->where('status', $status)->count()])->all();
         $metrics['total'] = (clone $base)->count();
         $metrics['overdue'] = (clone $base)->where('status', '!=', 'completed')->whereDate('due_date', '<', today())->count();
-        $performance = $isTaskAdmin ? NutritionTeamUser::query()->with('user')->whereHas('user', fn ($q) => $q->withAccessRoles([User::ROLE_TASK_ADMIN, User::ROLE_NUTRITION_USER]))->get()->map(function ($profile) {
-            $tasks = $profile->assignedTasks();
-            $completed = (clone $tasks)->where('status', 'completed')->count();
-            $total = (clone $tasks)->count();
+        $themeRows = collect();
+        $editingTheme = null;
+        $managerReport = null;
+        $filters = [];
+        if ($isTaskAdmin && in_array($activeTab, ['themes', 'manager'], true)) {
+            $request->validate([
+                'edit_theme' => ['nullable', 'integer', 'exists:nutrition_themes,id'],
+                'theme_id' => ['nullable', 'integer', 'exists:nutrition_themes,id'],
+                'start_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
+                'end_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
+            ]);
+            $report = app(NutritionThemeReport::class);
+            $themeRows = $report->rows($activeTab === 'manager' ? ($request->integer('theme_id') ?: null) : null);
+            if ($activeTab === 'themes' && $request->filled('edit_theme')) {
+                $editingTheme = NutritionTheme::query()->findOrFail($request->integer('edit_theme'));
+            }
+            if ($activeTab === 'manager') {
+                $end = $request->filled('end_date') ? Carbon::parse($request->input('end_date')) : today();
+                $start = $request->filled('start_date') ? Carbon::parse($request->input('start_date')) : $end->copy()->subDays(89);
+                if ($start->gt($end)) {
+                    throw ValidationException::withMessages(['end_date' => 'The end date must be on or after the start date.']);
+                }
+                $filters = ['start_date' => $start->toDateString(), 'end_date' => $end->toDateString(), 'theme_id' => $request->integer('theme_id') ?: null];
+                $managerReport = $report->manager($themeRows, $start, $end);
+            }
+        }
 
-            return ['name' => $profile->user->name, 'total' => $total, 'active' => (clone $tasks)->where('status', '!=', 'completed')->count(),
-                'completed' => $completed, 'overdue' => (clone $tasks)->where('status', '!=', 'completed')->whereDate('due_date', '<', today())->count(),
-                'completion_rate' => $total ? round(($completed / $total) * 100, 1) : 0];
-        }) : collect();
-
-        return view('nutrition-tasks.dashboard', ['activeTab' => $activeTab, 'isTaskAdmin' => $isTaskAdmin, 'metrics' => $metrics,
-            'recentTasks' => (clone $base)->with('assignees.user')->latest()->limit(12)->get(), 'performance' => $performance,
-            'prioritySummary' => $isTaskAdmin ? NutritionTask::query()->selectRaw('priority, count(*) as total')->groupBy('priority')->pluck('total', 'priority') : collect(),
-            'typeSummary' => $isTaskAdmin ? NutritionTask::query()->selectRaw('request_type, count(*) as total')->groupBy('request_type')->pluck('total', 'request_type') : collect()]);
+        return view('nutrition-tasks.dashboard', [
+            'activeTab' => $activeTab, 'isTaskAdmin' => $isTaskAdmin, 'metrics' => $metrics,
+            'recentTasks' => (clone $base)->with(['assignees.user', 'theme'])->latest()->limit(12)->get(),
+            'themeRows' => $themeRows, 'editingTheme' => $editingTheme, 'managerReport' => $managerReport, 'filters' => $filters,
+            'themes' => $isTaskAdmin ? NutritionTheme::query()->orderBy('sort_order')->orderBy('id')->get() : collect(),
+        ]);
     }
 
     public function index(Request $request): View
@@ -72,7 +96,8 @@ class NutritionTaskController extends Controller
     {
         $this->authorizeTaskAccess($request->user(), $nutritionTask);
 
-        return view('nutrition-tasks.show', ['task' => $nutritionTask->load(['assignees.user', 'assigner', 'subtasks.assignees.user', 'histories.changedBy', 'histories.oldAssignee.user', 'histories.newAssignee.user']),
+        return view('nutrition-tasks.show', ['task' => $nutritionTask->load(['theme', 'assignees.user', 'assigner', 'subtasks.theme', 'subtasks.assignees.user', 'histories.changedBy', 'histories.oldAssignee.user', 'histories.newAssignee.user']),
+            'themes' => NutritionTheme::query()->orderBy('sort_order')->orderBy('id')->get(),
             'teamMembers' => NutritionTeamUser::query()->with('user')->whereHas('user', fn ($q) => $q->where('active', true)->withAccessRoles([User::ROLE_TASK_ADMIN, User::ROLE_NUTRITION_USER]))->get()->sortBy('user.name'),
             'statuses' => NutritionTask::STATUSES, 'isTaskAdmin' => $request->user()->hasAnyRole([User::ROLE_TASK_ADMIN]),
             'canUpdateMainTask' => $request->user()->hasAnyRole([User::ROLE_TASK_ADMIN]) || $nutritionTask->assignees()->whereKey($request->user()->nutritionProfile?->id ?? 0)->exists()]);
@@ -85,7 +110,7 @@ class NutritionTaskController extends Controller
         $admin = $user->hasAnyRole([User::ROLE_TASK_ADMIN]);
         $rules = ['status' => ['required', Rule::in(array_keys(NutritionTask::STATUSES))], 'progress_notes' => ['nullable', 'string', 'max:5000']];
         if ($admin) {
-            $rules += ['assignee_ids' => ['nullable', 'array'], 'assignee_ids.*' => ['integer', 'distinct', $this->assigneeRule()], 'due_date' => ['nullable', 'date']];
+            $rules += ['assignee_ids' => ['nullable', 'array'], 'assignee_ids.*' => ['integer', 'distinct', $this->assigneeRule()], 'due_date' => ['nullable', 'date'], 'theme_id' => ['nullable', 'integer', 'exists:nutrition_themes,id']];
         }
         $data = $request->validate($rules);
         if ($data['status'] === 'completed' && $nutritionTask->subtasks()->where('status', '!=', 'completed')->exists()) {
@@ -98,6 +123,9 @@ class NutritionTaskController extends Controller
             $nutritionTask->status = $data['status'];
             $nutritionTask->progress_notes = $data['progress_notes'] ?? $nutritionTask->progress_notes;
             if ($admin) {
+                if (array_key_exists('theme_id', $data)) {
+                    $nutritionTask->theme_id = $data['theme_id'];
+                }
                 $nutritionTask->assignees()->sync($newIds);
                 $nutritionTask->assigned_to = $newIds[0] ?? null;
                 $nutritionTask->due_date = $data['due_date'] ?? null;
@@ -121,11 +149,12 @@ class NutritionTaskController extends Controller
     {
         $this->authorizeNutritionAccess($request->user());
         abort_unless($request->user()->hasAnyRole([User::ROLE_TASK_ADMIN]), 403);
-        $data = $request->validate(['title' => ['required', 'string', 'max:255'], 'description' => ['nullable', 'string', 'max:5000'], 'due_date' => ['nullable', 'date'],
+        $data = $request->validate(['title' => ['required', 'string', 'max:255'], 'description' => ['nullable', 'string', 'max:5000'], 'due_date' => ['nullable', 'date'], 'theme_id' => ['nullable', 'integer', 'exists:nutrition_themes,id'],
             'assignee_ids' => ['nullable', 'array'], 'assignee_ids.*' => ['integer', 'distinct', $this->assigneeRule()]]);
         $subtask = DB::transaction(function () use ($nutritionTask, $request, $data) {
             $subtask = $nutritionTask->subtasks()->create($data + ['created_by' => $request->user()->id]);
             $subtask->assignees()->sync($data['assignee_ids'] ?? []);
+            $this->reopenParentIfNeeded($nutritionTask, $subtask, $request->user());
 
             return $subtask;
         });
@@ -142,21 +171,35 @@ class NutritionTaskController extends Controller
         $admin = $user->hasAnyRole([User::ROLE_TASK_ADMIN]);
         $rules = ['status' => ['required', Rule::in(array_keys(NutritionTask::STATUSES))]];
         if ($admin) {
-            $rules += ['title' => ['required', 'string', 'max:255'], 'description' => ['nullable', 'string', 'max:5000'], 'due_date' => ['nullable', 'date'], 'assignee_ids' => ['nullable', 'array'], 'assignee_ids.*' => ['integer', 'distinct', $this->assigneeRule()]];
+            $rules += ['title' => ['required', 'string', 'max:255'], 'description' => ['nullable', 'string', 'max:5000'], 'due_date' => ['nullable', 'date'], 'theme_id' => ['nullable', 'integer', 'exists:nutrition_themes,id'], 'assignee_ids' => ['nullable', 'array'], 'assignee_ids.*' => ['integer', 'distinct', $this->assigneeRule()]];
         }
         $data = $request->validate($rules);
         $oldIds = $nutritionSubtask->assignees()->pluck('nutrition_team_users.id')->map(fn ($id) => (int) $id)->all();
-        if ($admin) {
-            $nutritionSubtask->fill($data);
-            $nutritionSubtask->assignees()->sync($data['assignee_ids'] ?? []);
-        }
-        $nutritionSubtask->status = $data['status'];
-        $nutritionSubtask->completed_at = $data['status'] === 'completed' ? ($nutritionSubtask->completed_at ?? now()) : null;
-        $nutritionSubtask->save();
+        DB::transaction(function () use ($admin, $data, $nutritionSubtask, $nutritionTask, $user) {
+            if ($admin) {
+                $nutritionSubtask->fill($data);
+                $nutritionSubtask->assignees()->sync($data['assignee_ids'] ?? []);
+            }
+            $nutritionSubtask->status = $data['status'];
+            $nutritionSubtask->completed_at = $data['status'] === 'completed' ? ($nutritionSubtask->completed_at ?? now()) : null;
+            $nutritionSubtask->save();
+            $this->reopenParentIfNeeded($nutritionTask, $nutritionSubtask, $user);
+        });
         $newIds = $nutritionSubtask->assignees()->pluck('nutrition_team_users.id')->map(fn ($id) => (int) $id)->all();
         $failed = $admin && $oldIds !== $newIds ? $this->notifySubtask($nutritionSubtask, array_values(array_diff($newIds, $oldIds))) : false;
 
         return back()->with($failed ? 'warning' : 'status', $failed ? 'Subtask changes were saved, but one or more assignment emails were not sent.' : 'Subtask updated successfully.');
+    }
+
+    private function reopenParentIfNeeded(NutritionTask $task, NutritionSubtask $subtask, User $user): void
+    {
+        if ($subtask->status !== 'completed' && $task->status === 'completed') {
+            $task->update(['status' => 'in_progress', 'completed_at' => null]);
+            $task->histories()->create([
+                'changed_by' => $user->id, 'old_status' => 'completed', 'new_status' => 'in_progress',
+                'note' => 'Main task reopened because a subtask is incomplete.',
+            ]);
+        }
     }
 
     private function assigneeRule(): Exists
@@ -178,7 +221,7 @@ class NutritionTaskController extends Controller
             $failed = ! $this->outboundMail->send($person->user->email, new NutritionTaskAssignedMail($task, $person)) || $failed;
         }
 
-return $failed;
+        return $failed;
     }
 
     private function notifySubtask(NutritionSubtask $subtask, ?array $ids = null): bool
@@ -192,7 +235,7 @@ return $failed;
             $failed = ! $this->outboundMail->send($person->user->email, new NutritionSubtaskAssignedMail($subtask, $person)) || $failed;
         }
 
-return $failed;
+        return $failed;
     }
 
     private function authorizeNutritionAccess(User $user): void

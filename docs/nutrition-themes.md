@@ -1,0 +1,19 @@
+# Nutrition themes
+
+Deploy with `php artisan migrate --force` before opening the updated nutrition dashboard. No reseeding or spreadsheet upload is needed. Existing tasks and subtasks remain unclassified until a Task Admin selects a theme.
+
+The migration creates 30 planned activities in `nutrition_themes`. Only activity code, name and original display order are copied from the approved workplan, alongside internal IDs and timestamps. Both tasks and subtasks reference this single table through one nullable `theme_id`. The second duplicated `4c` is `4d` (UNSCT approval), as approved. No responsibility, assignee, schedule, date or other spreadsheet data is loaded.
+
+The approved brief appears above the task summary cards in Nutrition Overview. It is summarised from the progress report overview and Phase II plans (pages 1–2 and 13–14). The ICT workspace retains its existing overview, performance reporting and manager dashboard.
+
+Task Admins use **Manage Themes** to add/edit codes, names and display order. The original numeric/alphabetic codes are visible identifiers; internal IDs preserve task links when a code or name is edited. New or edited themes appear immediately in both single-selection dropdowns. Themes cannot be deleted through this module, protecting historical links.
+
+Execution is calculated live from directly linked main tasks and subtasks. Each work item contributes once to its explicitly selected theme. Subtasks do not silently inherit a theme; their assignees still inherit from the parent when no specific subtask assignees are selected. Parent activity codes do not automatically include child activity codes in totals.
+
+Theme status is Not Started when no work is linked or all linked work is not started; Started when at least one work item has started and none is in progress/completed; In Progress when work is in progress or only some is complete; Completed only when every linked work item is complete. Reopening a subtask, or adding an incomplete subtask to a completed task, reopens the parent main task. Completion timestamps are cleared on reopening. Overdue is a subset of incomplete work with a due date before today, not an additional mutually exclusive status. Members are deduplicated across all linked work.
+
+The Manager Dashboard supports theme and inclusive date filters. Current status/backlog cards and charts are snapshots of all work for selected themes. Creation/completion activity, timeliness and duration use the requested period; creation and completion dates are filtered independently. Work without a theme is excluded and identified as such in the dashboard explanation. Completion with no actual timestamp is excluded from date-based completion metrics rather than inventing a date. Work with no due date is shown separately in timeliness results. Completion duration is elapsed time from creation, not working/business days. Theme completion dates are the latest actual completion timestamp of their linked work when all linked work is complete; historical trend snapshots are not reconstructed after reopening.
+
+The table downloads as genuine `.xlsx` (PHP Zip extension required) or PNG. Chart PNG downloads and the table image use native browser canvas and require JavaScript, with no external chart/export CDN dependency. Chart data tables remain available without JavaScript. Excel cells containing descriptions are text, never formulas. The table includes derived execution statistics; no additional spreadsheet metadata is imported. All six manager charts can be downloaded individually as PNG.
+
+Theme management and report exports require Task Admin access. Nutrition members can view their own tasks/themes and update permitted work statuses, but cannot change theme assignments or access admin theme reports. Global-only roles do not gain nutrition permissions.
