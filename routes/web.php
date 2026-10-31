@@ -18,6 +18,7 @@ use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\PublicNutritionTaskController;
 use App\Http\Controllers\NutritionTaskController;
 use App\Http\Controllers\NutritionUserController;
+use App\Http\Controllers\NutritionThemeController;
 use App\Http\Controllers\RoleManagementController;
 use App\Http\Middleware\EnsurePasswordIsCurrent;
 use App\Http\Middleware\EnsureWorkspaceAccess;
@@ -82,6 +83,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/nutrition-users', [NutritionUserController::class, 'store'])->name('admin.nutrition-users.store');
         Route::put('/nutrition-users/{nutritionTeamUser}', [NutritionUserController::class, 'update'])->name('admin.nutrition-users.update');
         Route::get('/nutrition-dashboard', [NutritionTaskController::class, 'dashboard'])->name('nutrition-tasks.dashboard');
+        Route::post('/nutrition-themes', [NutritionThemeController::class, 'store'])->name('nutrition-themes.store');
+        Route::put('/nutrition-themes/{nutritionTheme}', [NutritionThemeController::class, 'update'])->name('nutrition-themes.update');
+        Route::get('/nutrition-themes/export.xlsx', [NutritionThemeController::class, 'export'])->name('nutrition-themes.export');
         Route::get('/nutrition-tasks', [NutritionTaskController::class, 'index'])->name('nutrition-tasks.index');
         Route::get('/nutrition-tasks/{nutritionTask}', [NutritionTaskController::class, 'show'])->name('nutrition-tasks.show');
         Route::put('/nutrition-tasks/{nutritionTask}', [NutritionTaskController::class, 'update'])->name('nutrition-tasks.update');
